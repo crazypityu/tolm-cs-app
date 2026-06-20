@@ -4,6 +4,28 @@ from audio_recorder_streamlit import audio_recorder
 
 st.set_page_config(page_title="Szakmai Tolmács", page_icon="🎙️", layout="centered")
 
+# --- JELSZÓ VÉDELEM BEÁLLÍTÁSA ---
+# Itt vannak a jelszavak. Amit az idézőjelek közé írsz, az lesz a kód!
+ERVENYES_JELSZAVAK = ["MesterKód74", "Zolder2026", "Teszt01"]
+
+if "bejelentkezve" not in st.session_state:
+    st.session_state["bejelentkezve"] = False
+
+if not st.session_state["bejelentkezve"]:
+    st.title("🔒 Védett Alkalmazás")
+    st.write("Kérjük, adja meg a belépési kódot a tolmács használatához.")
+    
+    beirt_jelszo = st.text_input("Belépési kód:", type="password")
+    
+    if st.button("Belépés"):
+        if beirt_jelszo in ERVENYES_JELSZAVAK:
+            st.session_state["bejelentkezve"] = True
+            st.rerun()
+        else:
+            st.error("Hibás belépési kód! Kérjük, próbálja újra.")
+    st.stop() # Megállítja az oldalt, nem mutat semmi mást a jelszóig
+# ---------------------------------
+
 st.title("🎙️ Élő Szakmai Tolmács")
 st.write("Nyomd meg a mikrofont, beszélj bármilyen nyelven, és a Gemini automatikusan fordítja!")
 
@@ -13,7 +35,7 @@ API_KEY = "AIzaSyDijf4BunkGRbH4ovX91PkIYhrxyvV1uRw"
 if API_KEY and API_KEY != "IDE_MÁSOLD_AZ_AI_STUDIO_API_KULCSODAT":
     genai.configure(api_key=API_KEY)
 
-SYSTEM_INSTRUCTION = "Te egy univerzális, professzionális műszaki, ipari és szakmai fordító-asszisztens vagy. A feladatod a beérkező hanganyagok azonnali, precíz fordítása szöveggé. Szabályok: 1. SZAKMAI PONTOSSÁG: Alkalmazd a valódi ipari, műszaki terminológiát. Ne végezz tükörfordítást. 2. AUTOMATA FELISMERÉS: Ha a beszéd idegen nyelvű, fordítsd magyarra. Ha magyar, fordítsd angolra. 3. TISZTA KIMENET: Kizárólag a kész fordítást add vissza."
+SYSTEM_INSTRUCTION = "Te egy univerzális, professzionális műszaki, ipari és szakmai fordító-asszisztens vagy. A feladatod a kapott hangot azonnal és pontosan lefordítani a környezetnek megfelelő szakmai nyelvezettel."
 
 audio_bytes = audio_recorder(
     text="Kattints a rögzítéshez...",
@@ -41,6 +63,5 @@ if audio_bytes:
             
             st.success("Fordítás eredménye:")
             st.markdown(f"### {response.text}")
-            
         except Exception as e:
-            st.error(f"Hiba történt a feldolgozás során: {e}")
+            st.error(f"Hiba történt a fordítás során: {e}")
