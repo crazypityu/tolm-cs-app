@@ -2,11 +2,11 @@ import streamlit as st
 import google.generativeai as genai
 from audio_recorder_streamlit import audio_recorder
 import pycountry
+from google.api_core import client_options
 
 st.set_page_config(page_title="Szakmai Tolmács", page_icon="🎙️", layout="centered")
 
 # --- JELSZÓ VÉDELEM BEÁLLÍTÁSA ---
-# Az új, egyedi belépési kódod:
 ERVENYES_JELSZAVAK = ["Pitta62746274"]
 
 if "bejelentkezve" not in st.session_state:
@@ -33,7 +33,6 @@ st.write("Válaszd ki a világ bármelyik nyelvét, nyomd meg a mikrofont, és b
 # --- VILÁG ÖSSZES NYELVE LISTA GENERÁLÁSA ---
 st.write("### 🌐 Nyelvi beállítások:")
 
-# Két oszlop a választáshoz
 col1, col2 = st.columns(2)
 
 @st.cache_data
@@ -78,7 +77,6 @@ with col2:
     alap_cel = nyelv_kulcsok.index("French") if "French" in nyelv_kulcsok else 0
     cel_nyelv = st.selectbox("Erre a nyelvre:", options=nyelv_kulcsok, format_func=lambda x: vilag_nyelvei[x], index=alap_cel)
 
-# Dinamikus utasítás a Gemini számára
 SYSTEM_INSTRUCTION = (
     f"Te egy univerzális, professzionális műszaki, ipari és szakmai szakfordító és tolmács vagy. "
     f"A feladatod a kapott {forras_nyelv} nyelvű hangot azonnal, folyékonyan és hajszálpontosan lefordítani {cel_nyelv} nyelvre. "
@@ -90,11 +88,11 @@ gomb_szoveg = f"Kattints, majd beszélj ({forras_nyelv} ➔ {cel_nyelv})...."
 
 st.write("---")
 
-# Ide másold be az AI Studio-ból kapott API kulcsodat!
 API_KEY = "AIzaSyDijf4BunkGRbH4ovX91PkIYhrxyvV1uRw"
 
-if API_KEY and API_KEY != "IDE_MÁSOLD_AZ_AI_STUDIO_API_KULCSODAT":
-    genai.configure(api_key=API_KEY)
+if API_KEY:
+    # Itt kényszerítjük a stabil v1-es Google API-t, így nem lesz 404-es hiba
+    genai.configure(api_key=API_KEY, client_options=client_options.ClientOptions(api_version="v1"))
 
 audio_bytes = audio_recorder(
     text=gomb_szoveg,
