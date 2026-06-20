@@ -1,11 +1,11 @@
 import streamlit as st
 import google.generativeai as genai
 from audio_recorder_streamlit import audio_recorder
+import pycountry
 
 st.set_page_config(page_title="Szakmai Tolmács", page_icon="🎙️", layout="centered")
 
 # --- JELSZÓ VÉDELEM BEÁLLÍTÁSA ---
-# Itt vannak a jelszavak. Amit az idézőjelek közé írsz, az lesz a kód!
 ERVENYES_JELSZAVAK = ["MesterKód74", "Zolder2026", "Teszt01"]
 
 if "bejelentkezve" not in st.session_state:
@@ -23,22 +23,86 @@ if not st.session_state["bejelentkezve"]:
             st.rerun()
         else:
             st.error("Hibás belépési kód! Kérjük, próbálja újra.")
-    st.stop() # Megállítja az oldalt, nem mutat semmi mást a jelszóig
+    st.stop()
 # ---------------------------------
 
-st.title("🎙️ Élő Szakmai Tolmács")
-st.write("Nyomd meg a mikrofont, beszélj bármilyen nyelven, és a Gemini automatikusan fordítja!")
+st.title("🎙️ Élő Globális Szakmai Tolmács")
+st.write("Válaszd ki a világ bármelyik nyelvét, nyomd meg a mikrofont, és beszélj!")
 
-# Ide másold be az AI Studio-ból kapott API kulcsodat az idézőjelek közé!
+# --- VILÁG ÖSSZES NYELVE LISTA GENERÁLÁSA ---
+st.write("### 🌐 Nyelvi beállítások:")
+
+# Kigyűjtjük a világ nyelveit magyar és nemzetközi névvel, ABC sorrendben
+@st.cache_data
+def get_all_languages():
+    # Néhány kiemelt nyelv magyar névvel a kényelemért, a többi angolul jön a nemzetközi adatbázisból
+    kiemelt_nyelvek = {
+        "Hungarian": "🇭🇺 Magyar (Hungarian)",
+        "French": "🇫🇷 Francia (French)",
+        "English": "🇬🇧 Angol (English)",
+        "German": "🇩🇪 Német (German)",
+        "Dutch": "🇳🇱 Holland (Dutch)",
+        "Romanian": "🇷🇴 Román (Romanian)",
+        "Bulgarian": "🇧🇬 Bolgár (Bulgarian)",
+        "Polish": "🇵🇱 Lengyel (Polish)",
+        "Spanish": "🇪🇸 Spanyol (Spanish)",
+        "Italian": "🇮🇹 Olasz (Italian)",
+        "Russian": "🇷🇺 Orosz (Russian)",
+        "Turkish": "🇹🇷 Török (Turkish)"
+    }
+    
+    teljes_lista = {}
+    # Először betesszük a kiemelteket az elejére
+    for k, v in kiemelt_nyelvek.items():
+        teljes_lista[k] = v
+        
+    # Utána feltöltjük a világ összes többi nyelvével ABC sorrendben
+    maradek = []
+    for lang in pycountry.languages:
+        if hasattr(lang, 'name') and lang.name not in teljes_lista:
+            maradek.append(lang.name)
+            
+    for l_name in sorted(maradek):
+        teljes_lista[l_name] = l_name
+        
+    return teljes_lista
+
+vilag_nyelvei = get_all_languages()
+nyelv_kulcsok = list(vilag_nyelvei.keys())
+
+# Két oszlop a választáshoz
+col1, col2 = st.columns(2)
+
+with col1:
+    # Alapértelmezett a Magyar (Hungarian)
+    alap_forras = nyelv_kulcsok.index("Hungarian") if "Hungarian" in nyelv_kulcsok else 0
+    forras_nyelv = st.selectbox("Erről a nyelvről:", options=nyelv_kulcsok, format_func=lambda x: vilag_nyelvei[x], index=alap_forras)
+
+with col2:
+    # Alapértelmezett a Francia (French)
+    alap_cel = nyelv_kulcsok.index("French") if "French" in nyelv_kulcsok else 0
+    cel_nyelv = st.selectbox("Erre a nyelvre:", options=nyelv_kulcsok, format_func=lambda x: vilag_nyelvei[x], index=alap_cel)
+
+# Dinamikus utasítás a Gemini számára
+SYSTEM_INSTRUCTION = (
+    f"Te egy univerzális, professzionális műszaki, ipari és szakmai szakfordító és tolmács vagy. "
+    f"A feladatod a kapott {forras_nyelv} nyelvű hangot azonnal, folyékonyan és hajszálpontosan lefordítani {cel_nyelv} nyelvre. "
+    f"Alkalmazz a környezetnek megfelelő, precíz ipari és szakmai szakkifejezéseket. "
+    f"Kizárólag a tiszta fordítást add vissza szövegesen, mindenféle extra kommentár, bevezetés vagy magyarázat nélkül."
+)
+
+gomb_szoveg = f"Kattints, majd beszélj ({forras_nyelv} ➔ {cel_nyelv})..."
+
+st.write("---")
+
+# Ide másold be az AI Studio-ból kapott API kulcsodat!
 API_KEY = "AIzaSyDijf4BunkGRbH4ovX91PkIYhrxyvV1uRw"
 
 if API_KEY and API_KEY != "IDE_MÁSOLD_AZ_AI_STUDIO_API_KULCSODAT":
     genai.configure(api_key=API_KEY)
 
-SYSTEM_INSTRUCTION = "Te egy univerzális, professzionális műszaki, ipari és szakmai fordító-asszisztens vagy. A feladatod a kapott hangot azonnal és pontosan lefordítani a környezetnek megfelelő szakmai nyelvezettel."
-
 audio_bytes = audio_recorder(
-    text="Kattints a rögzítéshez...",
+    text=gomb_szoveg,
     recording_color="#e74c3c",
     neutral_color="#3498db",
     icon_size="3x"
