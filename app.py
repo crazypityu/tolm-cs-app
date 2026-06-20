@@ -6,7 +6,8 @@ import pycountry
 st.set_page_config(page_title="Szakmai Tolmács", page_icon="🎙️", layout="centered")
 
 # --- JELSZÓ VÉDELEM BEÁLLÍTÁSA ---
-ERVENYES_JELSZAVAK = ["MesterKód74", "Zolder2026", "Teszt01"]
+# Az új, egyedi belépési kódod:
+ERVENYES_JELSZAVAK = ["Pitta62746274"]
 
 if "bejelentkezve" not in st.session_state:
     st.session_state["bejelentkezve"] = False
@@ -32,10 +33,11 @@ st.write("Válaszd ki a világ bármelyik nyelvét, nyomd meg a mikrofont, és b
 # --- VILÁG ÖSSZES NYELVE LISTA GENERÁLÁSA ---
 st.write("### 🌐 Nyelvi beállítások:")
 
-# Kigyűjtjük a világ nyelveit magyar és nemzetközi névvel, ABC sorrendben
+# Két oszlop a választáshoz
+col1, col2 = st.columns(2)
+
 @st.cache_data
 def get_all_languages():
-    # Néhány kiemelt nyelv magyar névvel a kényelemért, a többi angolul jön a nemzetközi adatbázisból
     kiemelt_nyelvek = {
         "Hungarian": "🇭🇺 Magyar (Hungarian)",
         "French": "🇫🇷 Francia (French)",
@@ -52,11 +54,9 @@ def get_all_languages():
     }
     
     teljes_lista = {}
-    # Először betesszük a kiemelteket az elejére
     for k, v in kiemelt_nyelvek.items():
         teljes_lista[k] = v
         
-    # Utána feltöltjük a világ összes többi nyelvével ABC sorrendben
     maradek = []
     for lang in pycountry.languages:
         if hasattr(lang, 'name') and lang.name not in teljes_lista:
@@ -70,16 +70,11 @@ def get_all_languages():
 vilag_nyelvei = get_all_languages()
 nyelv_kulcsok = list(vilag_nyelvei.keys())
 
-# Két oszlop a választáshoz
-col1, col2 = st.columns(2)
-
 with col1:
-    # Alapértelmezett a Magyar (Hungarian)
     alap_forras = nyelv_kulcsok.index("Hungarian") if "Hungarian" in nyelv_kulcsok else 0
     forras_nyelv = st.selectbox("Erről a nyelvről:", options=nyelv_kulcsok, format_func=lambda x: vilag_nyelvei[x], index=alap_forras)
 
 with col2:
-    # Alapértelmezett a Francia (French)
     alap_cel = nyelv_kulcsok.index("French") if "French" in nyelv_kulcsok else 0
     cel_nyelv = st.selectbox("Erre a nyelvre:", options=nyelv_kulcsok, format_func=lambda x: vilag_nyelvei[x], index=alap_cel)
 
@@ -91,7 +86,7 @@ SYSTEM_INSTRUCTION = (
     f"Kizárólag a tiszta fordítást add vissza szövegesen, mindenféle extra kommentár, bevezetés vagy magyarázat nélkül."
 )
 
-gomb_szoveg = f"Kattints, majd beszélj ({forras_nyelv} ➔ {cel_nyelv})..."
+gomb_szoveg = f"Kattints, majd beszélj ({forras_nyelv} ➔ {cel_nyelv})...."
 
 st.write("---")
 
