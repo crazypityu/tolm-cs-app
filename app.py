@@ -114,7 +114,7 @@ if audio_bytes:
             }
             
             model = genai.GenerativeModel(
-                model_name="gemini-1.5-pro-latest",
+                model_name="gemini-1.5-flash",
                 system_instruction=SYSTEM_INSTRUCTION
             )
             
