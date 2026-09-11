@@ -76,20 +76,21 @@ with col1:
 with col2:
     alap_cel = nyelv_kulcsok.index("French") if "French" in nyelv_kulcsok else 0
     cel_nyelv = st.selectbox("Erre a nyelvre:", options=nyelv_kulcsok, format_func=lambda x: vilag_nyelvei[x], index=alap_cel)
-  # Célnyelvi bemutatkozó gomb
-if st.button(f"📢 Bemutatkozás a kollégának ({cel_nyelv} nyelven)"):
-    with st.spinner("Bemutatkozás betöltése..."):
-        prompt_intro = (
-            f"Írj egyetlen udvarias, természetes mondatot {cel_nyelv} nyelven a külföldi kollégának! "
-            "A lényeg: 'Üdvözlöm! Ez az alkalmazás élőben fordítja a beszélgetésünket, nyugodtan beszéljen a saját nyelvén.' "
-            "Kizárólag a lefordított célnyelvi mondatot add vissza, idézőjelek és extra magyarázat nélkül!"
+# 6 nyelvű azonnali szakmai bemutatkozás
+    if st.button(f"📢 Bemutatkozás a kollégának ({cel_nyelv} nyelven)"):
+        intros = {
+            "French": "Bonjour ! Je m'appelle István Molnár. Je suis serrurier-métallier. Cette application traduit notre conversation en direct, vous pouvez parler naturellement en français !",
+            "Dutch": "Hallo! Mijn naam is István Molnár, ik ben metaalbewerker. Deze app vertaalt ons gesprek live, u kunt gewoon in het Nederlands praten!",
+            "German": "Guten Tag! Mein Name ist István Molnár, ich bin Metallbauer. Diese App übersetzt unser Gespräch live, sprechen Sie einfach auf Deutsch!",
+            "English": "Hello! My name is István Molnár, metal construction technician. This app translates our conversation live, feel free to speak in English!",
+            "Italian": "Buongiorno! Mi chiamo István Molnár, sono un carpentiere metallico. Questa applicazione traduce la nostra conversazione dal vivo, parli pure in italiano!",
+            "Spanish": "¡Hola! Me llamo István Molnár, soy cerrajero y montador. Esta aplicación traduce nuestra conversación en vivo, ¡hable en español con tranquilidad!"
+        }
+        bemutatkozas_szoveg = intros.get(
+            cel_nyelv, 
+            "Üdvözlöm! Ez az alkalmazás élőben fordítja a beszélgetésünket, nyugodtan beszéljen a saját anyanyelvén!"
         )
-        try:
-            intro_model = genai.GenerativeModel("gemini-1.5-flash")
-            intro_valasz = intro_model.generate_content(prompt_intro)
-            st.info(f"👋 **{intro_valasz.text.strip()}**")
-        except Exception as e:
-            st.warning("Nem sikerült lekérni a bemutatkozó szöveget.")
+        st.info(f"👋 **{bemutatkozas_szoveg}**")
 
 st.write("---")  
 
