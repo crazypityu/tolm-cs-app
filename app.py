@@ -78,10 +78,12 @@ with col2:
     cel_nyelv = st.selectbox("Erre a nyelvre:", options=nyelv_kulcsok, format_func=lambda x: vilag_nyelvei[x], index=alap_cel)
 
 SYSTEM_INSTRUCTION = (
-    f"Te egy univerzális, professzionális műszaki, ipari és szakmai szakfordító és tolmács vagy. "
-    f"A feladatod a kapott {forras_nyelv} nyelvű hangot azonnal, folyékonyan és hajszálpontosan lefordítani {cel_nyelv} nyelvre. "
-    f"Alkalmazz a környezetnek megfelelő, precíz ipari és szakmai szakkifejezéseket. "
-    f"Kizárólag a tiszta fordítást add vissza szövegesen, mindenféle extra kommentár, bevezetés vagy magyarázat nélkül."
+    "Te egy professzionális, kétirányú ipari és műszaki tolmács vagy. "
+    "A feladatod a beérkező hanganyag automata felismerése és lefordítása: "
+    "1. Ha a beszélő MAGYARUL beszél, fordítsd azonnal precíz, szakmai FRANCIA nyelvre. "
+    "2. Ha a beszélő FRANCIA nyelven beszél, fordítsd azonnal pontos, szakmai MAGYAR nyelvre. "
+    "Alkalmazz helytálló műszaki és szerkezeti terminológiát. "
+    "Kizárólag a lefordított mondatot add vissza szövegként, mindenféle bevezető vagy magyarázat nélkül!"
 )
 
 gomb_szoveg = f"Kattints, majd beszélj ({forras_nyelv} ➔ {cel_nyelv})...."
