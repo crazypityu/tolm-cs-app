@@ -91,8 +91,7 @@ st.write("---")
 API_KEY = "AIzaSyDijf4BunkGRbH4ovX91PkIYhrxyvV1uRw"
 
 if API_KEY:
-    # Itt kényszerítjük a stabil v1-es Google API-t, így nem lesz 404-es hiba
-    genai.configure(api_key=API_KEY, client_options=client_options.ClientOptions(api_version="v1"))
+    genai.configure(api_key=API_KEY)   
 
 audio_bytes = audio_recorder(
     text=gomb_szoveg,
