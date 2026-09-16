@@ -22,39 +22,47 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Android Project via Capacitor
+      - name: Build Android via Capacitor
         run: |
-          mkdir -p android-wrapper
-          cd android-wrapper
+          mkdir -p wrapper
+          cd wrapper
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap init "Tolmacs App" "com.istvan.tolmacs" --web-dir .
+          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
           
-          # Hozzunk létre egy minimális webindexet
-          echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=https://tolm-cs-app.streamlit.app"></head><body>Loading...</body></html>' > index.html
-          
-          # Konfiguráljuk a közvetlen Streamlit URL-t
-          node -e '
-            const fs = require("fs");
-            const config = {
-              appId: "com.istvan.tolmacs",
-              appName: "Tolmacs App",
-              webDir: ".",
-              server: {
-                url: "https://tolm-cs-app.streamlit.app",
-                cleartext: true
-              }
-            };
-            fs.writeFileSync("capacitor.config.json", JSON.stringify(config, null, 2));
-          '
-          
+          mkdir -p www
+          cat << 'EOF' > www/index.html
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta http-equiv="refresh" content="0; url=https://tolm-cs-app.streamlit.app">
+              <title>Tolmacs App</title>
+            </head>
+            <body style="background:#020617;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;">
+              <p>Betöltés...</p>
+            </body>
+          </html>
+          EOF
+
+          cat << 'EOF' > capacitor.config.json
+          {
+            "appId": "com.istvan.tolmacs",
+            "appName": "Tolmacs App",
+            "webDir": "www",
+            "server": {
+              "url": "https://tolm-cs-app.streamlit.app",
+              "cleartext": true
+            }
+          }
+          EOF
+
           npx cap add android
 
-          # Mikrofon és hálózati engedélyek hozzáadása az AndroidManifest-hez
+          # Mikrofon és hálózati jogosultságok hozzáadása
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />' $MANIFEST
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />' $MANIFEST
 
-          # Build debug APK
+          # Android APK fordítás
           cd android
           chmod +x ./gradlew
           ./gradlew assembleDebug
@@ -63,4 +71,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Tolmacs-App-Android
-          path: android-wrapper/android/app/build/outputs/apk/debug/app-debug.apk
+          path: wrapper/android/app/build/outputs/apk/debug/app-debug.apk
