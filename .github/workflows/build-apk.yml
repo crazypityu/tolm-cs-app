@@ -1,0 +1,66 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Android Project via Capacitor
+        run: |
+          mkdir -p android-wrapper
+          cd android-wrapper
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "Tolmacs App" "com.istvan.tolmacs" --web-dir .
+          
+          # Hozzunk létre egy minimális webindexet
+          echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=https://tolm-cs-app.streamlit.app"></head><body>Loading...</body></html>' > index.html
+          
+          # Konfiguráljuk a közvetlen Streamlit URL-t
+          node -e '
+            const fs = require("fs");
+            const config = {
+              appId: "com.istvan.tolmacs",
+              appName: "Tolmacs App",
+              webDir: ".",
+              server: {
+                url: "https://tolm-cs-app.streamlit.app",
+                cleartext: true
+              }
+            };
+            fs.writeFileSync("capacitor.config.json", JSON.stringify(config, null, 2));
+          '
+          
+          npx cap add android
+
+          # Mikrofon és hálózati engedélyek hozzáadása az AndroidManifest-hez
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />' $MANIFEST
+
+          # Build debug APK
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tolmacs-App-Android
+          path: android-wrapper/android/app/build/outputs/apk/debug/app-debug.apk
