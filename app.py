@@ -5,7 +5,15 @@ import pycountry
 from google.api_core import client_options
 
 st.set_page_config(page_title="Szakmai Tolmács", page_icon="🎙️", layout="centered")
-
+st.markdown("""
+<style>
+/* Letiltja a képernyő lehúzására induló lapfrissítést mobilon */
+html, body, [data-testid="stAppViewContainer"] {
+    overscroll-behavior-y: contain !important;
+    overscroll-behavior: contain !important;
+}
+</style>
+""", unsafe_allow_html=True)
 # --- JELSZÓ VÉDELEM BEÁLLÍTÁSA ---
 ERVENYES_JELSZAVAK = ["Pitta62746274"]
 
