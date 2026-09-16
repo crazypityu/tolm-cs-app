@@ -17,17 +17,17 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Gradle 8.4
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.4'
+          gradle-version: '8.2'
 
-      - name: Create Clean Android App
+      - name: Build Android App
         run: |
-          mkdir -p TolmacsApp/app/src/main/java/com/istvan/tolmacs
-          mkdir -p TolmacsApp/app/src/main/res/values
-          cd TolmacsApp
+          mkdir -p app/src/main/java/com/istvan/tolmacs
+          mkdir -p app/src/main/res/values
 
+          # settings.gradle a főkönyvtárba
           cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -47,12 +47,14 @@ jobs:
           include ':app'
           EOF
 
+          # Root build.gradle
           cat << 'EOF' > build.gradle
           plugins {
-              id 'com.android.application' version '8.2.2' apply false
+              id 'com.android.application' version '8.1.4' apply false
           }
           EOF
 
+          # app/build.gradle
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
@@ -87,6 +89,7 @@ jobs:
           }
           EOF
 
+          # AndroidManifest.xml
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -113,14 +116,7 @@ jobs:
           </manifest>
           EOF
 
-          cat << 'EOF' > app/src/main/res/values/styles.xml
-          <resources>
-              <style name="Theme.AppCompat.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
-                  <item name="android:windowBackground">#020617</item>
-              </style>
-          </resources>
-          EOF
-
+          # MainActivity.java
           cat << 'EOF' > app/src/main/java/com/istvan/tolmacs/MainActivity.java
           package com.istvan.tolmacs;
 
@@ -178,10 +174,9 @@ jobs:
           EOF
 
           gradle assembleDebug
-        working-directory: .
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Tolmacs-App-Android
-          path: TolmacsApp/app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
