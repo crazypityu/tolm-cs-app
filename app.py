@@ -4,43 +4,54 @@ import pycountry
 
 # 1. Lap konfiguráció
 st.set_page_config(
-    page_title="Intelligens Élő Tolmács",
+    page_title="Élő Tolmács",
     page_icon="🗣️",
-    layout="centered"
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
-# 2. Lehúzásos frissítés letiltása (CSS + JS) és gombstílus
+# 2. Speciális Face-to-Face stílusok és mobilvédelem
 st.markdown("""
 <style>
+/* Mobil lehúzás letiltása */
 html, body, #root, [data-testid="stAppViewContainer"], [data-testid="stMain"], section.main {
     overscroll-behavior-y: contain !important;
     overscroll-behavior: contain !important;
 }
-.stButton button {
-    width: 100%;
-    border-radius: 8px;
-    height: 3em;
+
+/* Felső fél: 180 fokos elforgatás a szemben ülő partnernek */
+.partner-zone {
+    transform: rotate(180deg);
+    background-color: #f0f4f9;
+    padding: 15px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    border: 2px solid #d3e3fd;
+}
+
+/* Alsó fél: a te oldalad */
+.user-zone {
+    background-color: #fdfdfd;
+    padding: 15px;
+    border-radius: 16px;
+    margin-top: 10px;
+    border: 2px solid #c2e7ff;
+}
+
+/* Hatalmas mikrofon gombok és kezelők */
+div[data-testid="stAudioInput"] {
+    transform: scale(1.15);
+    margin: 15px auto;
+}
+
+/* Címkék kiemelése */
+.zone-title {
+    font-size: 1.1rem;
     font-weight: bold;
+    margin-bottom: 8px;
+    color: #1a73e8;
 }
 </style>
-
-<script>
-let startY = 0;
-window.addEventListener('touchstart', function (e) {
-    if (e.touches.length === 1) {
-        startY = e.touches[0].clientY;
-    }
-}, { passive: true });
-
-window.addEventListener('touchmove', function (e) {
-    if (e.touches.length === 1) {
-        const currentY = e.touches[0].clientY;
-        if (window.scrollY === 0 && currentY > startY) {
-            e.preventDefault();
-        }
-    }
-}, { passive: false });
-</script>
 """, unsafe_allow_html=True)
 
 # 3. Gemini API konfiguráció
@@ -51,8 +62,6 @@ if not api_kulcs:
 
 genai.configure(api_key=api_kulcs)
 
-# Hangprofilok beállítása a Gemini-ben
-# Férfi hang: Puck, Női hang: Aoede
 def get_hang_modell(hang_nev="Puck"):
     return genai.GenerativeModel(
         model_name="gemini-2.0-flash",
@@ -68,96 +77,95 @@ def get_hang_modell(hang_nev="Puck"):
         }
     )
 
-# 4. Fejléc
-st.title("🗣️ Intelligens Élő Tolmács")
+# 4. Oldalsáv beállítások (hogy ne foglalja a helyet a képernyőn)
+with st.sidebar:
+    st.header("⚙️ Beállítások")
+    nyelvek = sorted([lang.name for lang in pycountry.languages if hasattr(lang, "alpha_2")])
+    
+    partner_neme = st.radio(
+        "Partner neme (hangkarakter):",
+        ("Nő", "Férfi"),
+        horizontal=True
+    )
+    
+    p_lang_idx = nyelvek.index("French") if "French" in nyelvek else 1
+    partner_lang = st.selectbox("Partner nyelve:", nyelvek, index=p_lang_idx)
+    
+    u_lang_idx = nyelvek.index("Hungarian") if "Hungarian" in nyelvek else 0
+    sajat_lang = st.selectbox("Saját nyelved:", nyelvek, index=u_lang_idx)
 
-# 5. Partner neme választó
-st.markdown("### 👤 Kivel beszélgetsz?")
-partner_neme = st.radio(
-    "Válaszd ki a beszélgetőpartnered nemét:",
-    ("Nővel beszélek", "Férfival beszélek"),
-    horizontal=True
-)
+# Partner hangjának kiválasztása
+partner_voice = "Aoede" if partner_neme == "Nő" else "Puck"
+sajat_voice = "Puck"
+
+# Tolmácsoló függvény
+def fordit_es_mond(audio_file, honnan, hova, beszelo_hang):
+    try:
+        modell = get_hang_modell(beszelo_hang)
+        prompt = f"Profi tolmács vagy. Fordítsd le a hallott beszédet {honnan} nyelvről {hova} nyelvre. Csak a lefordított mondatot add vissza és mondd ki {hova} nyelven, semmi mást!"
+        tartalom = [
+            prompt,
+            {"mime_type": "audio/wav", "data": audio_file.read()}
+        ]
+        valasz = modell.generate_content(tartalom)
+        
+        szoveg = ""
+        hang = None
+        for part in valasz.candidates[0].content.parts:
+            if hasattr(part, "text") and part.text:
+                szoveg += part.text
+            elif hasattr(part, "inline_data") and part.inline_data:
+                hang = part.inline_data.data
+        return szoveg, hang
+    except Exception as e:
+        return f"Hiba: {e}", None
+
+# ==========================================
+# PARTNER ZÓNA (FELÜL - 180°-KAL ELFORGATVA)
+# ==========================================
+st.markdown('<div class="partner-zone">', unsafe_allow_html=True)
+st.markdown(f'<div class="zone-title">🗣️ PARTNER ({partner_lang})</div>', unsafe_allow_html=True)
+
+# Partner mikrofonja
+partner_audio = st.audio_input("Partner mikrofon", key="partner_mic", label_visibility="collapsed")
+
+if partner_audio is not None:
+    if st.session_state.get("last_p_audio") != partner_audio:
+        st.session_state["last_p_audio"] = partner_audio
+        with st.spinner("Fordítás..."):
+            szov, snd = fordit_es_mond(partner_audio, partner_lang, sajat_lang, partner_voice)
+            st.session_state["p_forditas_szoveg"] = szov
+            st.session_state["p_forditas_hang"] = snd
+
+if st.session_state.get("p_forditas_szoveg"):
+    st.info(st.session_state["p_forditas_szoveg"])
+    if st.session_state.get("p_forditas_hang"):
+        st.audio(st.session_state["p_forditas_hang"], format="audio/wav", autoplay=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 
-# 6. Nyelvválasztás pycountry alapján
-nyelvek = sorted([lang.name for lang in pycountry.languages if hasattr(lang, "alpha_2")])
+# ==========================================
+# SAJÁT ZÓNA (ALUL - FELÉD NÉZ)
+# ==========================================
+st.markdown('<div class="user-zone">', unsafe_allow_html=True)
+st.markdown(f'<div class="zone-title">🗣️ ÉN ({sajat_lang})</div>', unsafe_allow_html=True)
 
-col1, col2 = st.columns(2)
-with col1:
-    forras_index = nyelvek.index("Hungarian") if "Hungarian" in nyelvek else 0
-    forras_nyelv = st.selectbox("Forrásnyelv (aki beszél):", nyelvek, index=forras_index)
+# Saját mikrofonod
+sajat_audio = st.audio_input("Saját mikrofon", key="sajat_mic", label_visibility="collapsed")
 
-with col2:
-    cel_index = nyelvek.index("French") if "French" in nyelvek else 1
-    cel_nyelv = st.selectbox("Célnyelv (amire fordít):", nyelvek, index=cel_index)
+if sajat_audio is not None:
+    if st.session_state.get("last_u_audio") != sajat_audio:
+        st.session_state["last_u_audio"] = sajat_audio
+        with st.spinner("Tolmácsolás és kimondás..."):
+            szov, snd = fordit_es_mond(sajat_audio, sajat_lang, partner_lang, sajat_voice)
+            st.session_state["u_forditas_szoveg"] = szov
+            st.session_state["u_forditas_hang"] = snd
 
-# Hangkarakter meghatározása a tolmácsoláshoz:
-# Ha te beszélsz magyarul -> a kimenő hang a te hangod képviseletében mindig Férfi (Puck)
-# Ha a partner beszél hozzád -> a felolvasó hang a kiválasztott partner neme (Aoede vagy Puck)
-if forras_nyelv == "Hungarian":
-    hasznalt_hang = "Puck"       # Te beszélsz -> Férfi hang tolmácsol
-else:
-    hasznalt_hang = "Aoede" if partner_neme == "Nővel beszélek" else "Puck"
+if st.session_state.get("u_forditas_szoveg"):
+    st.success(st.session_state["u_forditas_szoveg"])
+    if st.session_state.get("u_forditas_hang"):
+        st.audio(st.session_state["u_forditas_hang"], format="audio/wav", autoplay=True)
 
-# 7. Hang- és szövegbevitel
-st.markdown("### 🎙️ Mondd be a mondatot vagy írd le:")
-audio_bemenet = st.audio_input("Beszélj a mikrofonba:")
-
-forras_szoveg = st.text_area(
-    "Vagy írd be szövegként (ha nem mikrofont használsz):",
-    placeholder="Írd be a lefordítandó szöveget...",
-    height=80
-)
-
-# 8. Fordítás és hanggenerálás a Geminivel
-if st.button("🚀 Fordítás és Kimondás"):
-    if audio_bemenet is not None or forras_szoveg.strip():
-        with st.spinner("Tolmácsolás és beszéd generálása..."):
-            try:
-                modell = get_hang_modell(hasznalt_hang)
-                prompt_szoveg = f"""
-                Profi élő tolmács vagy. Fordítsd le az elhangzott/leírt szöveget {forras_nyelv} nyelvről {cel_nyelv} nyelvre.
-                Csak a lefordított mondatot mondd ki és írd le ezen a célnyelven ({cel_nyelv}), mindenféle bevezető vagy magyarázat nélkül!
-                """
-                
-                # Tartalom összeállítása: hang vagy szöveg
-                tartalom = [prompt_szoveg]
-                if audio_bemenet is not None:
-                    audio_bytes_input = audio_bemenet.read()
-                    tartalom.append({
-                        "mime_type": "audio/wav",
-                        "data": audio_bytes_input
-                    })
-                elif forras_szoveg.strip():
-                    tartalom.append(f'Szöveg: "{forras_szoveg.strip()}"')
-
-                valasz = modell.generate_content(tartalom)
-                
-                # Szöveg és audió kinyerése a válaszból
-                szoveg_eredmeny = ""
-                audio_bytes_output = None
-                
-                for part in valasz.candidates[0].content.parts:
-                    if hasattr(part, "text") and part.text:
-                        szoveg_eredmeny += part.text
-                    elif hasattr(part, "inline_data") and part.inline_data:
-                        audio_bytes_output = part.inline_data.data
-
-                st.session_state["eredmeny_szoveg"] = szoveg_eredmeny
-                st.session_state["eredmeny_audio"] = audio_bytes_output
-            except Exception as e:
-                st.error(f"Hiba történt a generálás során: {e}")
-    else:
-        st.warning("Kérlek, beszélj a mikrofonba vagy írj be szöveget!")
-
-# 9. Eredmény megjelenítése és lejátszása
-if "eredmeny_szoveg" in st.session_state and st.session_state["eredmeny_szoveg"]:
-    st.markdown("---")
-    st.subheader(f"Fordítás ({cel_nyelv}):")
-    st.success(st.session_state["eredmeny_szoveg"])
-
-    if st.session_state.get("eredmeny_audio"):
-        # A Gemini közvetlen WAV/PCM audiója azonnali lejátszással
-        st.audio(st.session_state["eredmeny_audio"], format="audio/wav", autoplay=True)
+st.markdown('</div>', unsafe_allow_html=True)
