@@ -30,17 +30,15 @@ div[data-testid="stVerticalBlock"]:has(> div .card-u) {
     transform: none !important;
 }
 
-/* Mikrofon modulok kerete és mérete */
+/* Mikrofon modulok stílusa és érintés-javítása mobilon */
 div[data-testid="stAudioInput"] {
     background-color: #1f2937 !important;
     border: 2px solid #3b82f6 !important;
     border-radius: 16px !important;
     padding: 8px !important;
     margin: 6px 0 !important;
-}
-
-div[data-testid="stAudioInput"] button {
-    transform: scale(1.3) !important;
+    pointer-events: auto !important;
+    z-index: 10 !important;
 }
 
 /* Kártyák stílusa */
@@ -76,10 +74,10 @@ if not api_kulcs:
 
 genai.configure(api_key=api_kulcs)
 
-# Frissített modellverzió: gemini-2.5-flash
+# Javított, támogatott modellnév
 def get_hang_modell(hang_nev="Puck"):
     return genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
+        model_name="gemini-2.0-flash",
         generation_config={
             "response_modalities": ["AUDIO", "TEXT"],
             "speech_config": {
@@ -135,14 +133,15 @@ with st.container():
         if st.session_state.get("last_p") != p_id:
             st.session_state["last_p"] = p_id
             with st.spinner("Tolmácsolás..."):
-                sz, h = fordit_beszed(p_audio.read(), partner_lang, sajat_lang, partner_voice)
+                sz, h = fordit_beszed(p_audio.read(), partner_lang, sajat_lang, sajat_voice)
                 st.session_state["p_txt"] = sz
                 st.session_state["p_snd"] = h
 
-    if st.session_state.get("p_txt"):
-        st.markdown(f'<div style="text-align:center; padding:12px; background:#1e3a8a; border-radius:10px; color:white; font-size:17px; margin-top:8px;">{st.session_state["p_txt"]}</div>', unsafe_allow_html=True)
-        if st.session_state.get("p_snd"):
-            st.audio(st.session_state["p_snd"], format="audio/wav", autoplay=True)
+    # A Partner felé az jelenik meg, amit TE mondtál neki (lefordítva az ő nyelvére)
+    if st.session_state.get("u_txt"):
+        st.markdown(f'<div style="text-align:center; padding:12px; background:#1e3a8a; border-radius:10px; color:white; font-size:17px; margin-top:8px;">{st.session_state["u_txt"]}</div>', unsafe_allow_html=True)
+        if st.session_state.get("u_snd"):
+            st.audio(st.session_state["u_snd"], format="audio/wav", autoplay=True)
 
 st.markdown("<hr style='border: 1px solid #374151; margin: 20px 0;'>", unsafe_allow_html=True)
 
@@ -150,10 +149,11 @@ st.markdown("<hr style='border: 1px solid #374151; margin: 20px 0;'>", unsafe_al
 # ALSÓ TÉRFÉL (TE - NORMÁL, EGYENES TÁJOLÁS)
 # ==============================================================================
 with st.container():
-    if st.session_state.get("u_txt"):
-        st.markdown(f'<div style="text-align:center; padding:12px; background:#065f46; border-radius:10px; color:white; font-size:17px; margin-bottom:8px;">{st.session_state["u_txt"]}</div>', unsafe_allow_html=True)
-        if st.session_state.get("u_snd"):
-            st.audio(st.session_state["u_snd"], format="audio/wav", autoplay=True)
+    # Feléd az jelenik meg, amit a PARTNER mondott (lefordítva magyarra)
+    if st.session_state.get("p_txt"):
+        st.markdown(f'<div style="text-align:center; padding:12px; background:#065f46; border-radius:10px; color:white; font-size:17px; margin-bottom:8px;">{st.session_state["p_txt"]}</div>', unsafe_allow_html=True)
+        if st.session_state.get("p_snd"):
+            st.audio(st.session_state["p_snd"], format="audio/wav", autoplay=True)
 
     u_audio = st.audio_input("Saját felvétel", key="u_mic", label_visibility="collapsed")
     st.markdown(f'<div class="card-u">🗣️ ÉN ({sajat_lang})</div>', unsafe_allow_html=True)
@@ -163,6 +163,6 @@ with st.container():
         if st.session_state.get("last_u") != u_id:
             st.session_state["last_u"] = u_id
             with st.spinner("Tolmácsolás és kimondás..."):
-                sz, h = fordit_beszed(u_audio.read(), sajat_lang, partner_lang, sajat_voice)
+                sz, h = fordit_beszed(u_audio.read(), sajat_lang, partner_lang, partner_voice)
                 st.session_state["u_txt"] = sz
                 st.session_state["u_snd"] = h
