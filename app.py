@@ -30,7 +30,7 @@ div[data-testid="stVerticalBlock"]:has(> div .card-u) {
     transform: none !important;
 }
 
-/* Mikrofon modulok kerete és mérete (scale nélkül a megbízható érintésért) */
+/* Mikrofon modulok stílusa és érintés javítása */
 div[data-testid="stAudioInput"] {
     background-color: #1f2937 !important;
     border: 2px solid #3b82f6 !important;
@@ -74,7 +74,7 @@ if not api_kulcs:
 
 genai.configure(api_key=api_kulcs)
 
-# Frissített, éles modellverzió: gemini-3.8-flash
+# Javított, éles modellnév
 def get_hang_modell(hang_nev="Puck"):
     return genai.GenerativeModel(
         model_name="gemini-3.8-flash",
@@ -137,7 +137,6 @@ with st.container():
                 st.session_state["p_txt"] = sz
                 st.session_state["p_snd"] = h
 
-    # A Partner felé az jelenik meg, amit TE mondtál neki (lefordítva az ő nyelvére)
     if st.session_state.get("u_txt"):
         st.markdown(f'<div style="text-align:center; padding:12px; background:#1e3a8a; border-radius:10px; color:white; font-size:17px; margin-top:8px;">{st.session_state["u_txt"]}</div>', unsafe_allow_html=True)
         if st.session_state.get("u_snd"):
@@ -149,7 +148,6 @@ st.markdown("<hr style='border: 1px solid #374151; margin: 20px 0;'>", unsafe_al
 # ALSÓ TÉRFÉL (TE - NORMÁL, EGYENES TÁJOLÁS)
 # ==============================================================================
 with st.container():
-    # Feléd az jelenik meg, amit a PARTNER mondott (lefordítva magyarra)
     if st.session_state.get("p_txt"):
         st.markdown(f'<div style="text-align:center; padding:12px; background:#065f46; border-radius:10px; color:white; font-size:17px; margin-bottom:8px;">{st.session_state["p_txt"]}</div>', unsafe_allow_html=True)
         if st.session_state.get("p_snd"):
