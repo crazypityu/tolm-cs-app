@@ -30,7 +30,7 @@ div[data-testid="stVerticalBlock"]:has(> div .card-u) {
     transform: none !important;
 }
 
-/* Mikrofon modulok stílusa és érintés-javítása mobilon */
+/* Mikrofon modulok kerete és mérete (scale nélkül a megbízható érintésért) */
 div[data-testid="stAudioInput"] {
     background-color: #1f2937 !important;
     border: 2px solid #3b82f6 !important;
@@ -74,10 +74,10 @@ if not api_kulcs:
 
 genai.configure(api_key=api_kulcs)
 
-# Javított, támogatott modellnév
+# Frissített, éles modellverzió: gemini-3.8-flash
 def get_hang_modell(hang_nev="Puck"):
     return genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
+        model_name="gemini-3.8-flash",
         generation_config={
             "response_modalities": ["AUDIO", "TEXT"],
             "speech_config": {
