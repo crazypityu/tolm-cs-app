@@ -1,10 +1,8 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import google.generativeai as genai
 import pycountry
-import base64
 
-# 1. Oldalbeállítás
+# 1. Lap konfiguráció
 st.set_page_config(
     page_title="Crazyfordító",
     page_icon="🗣️",
@@ -12,19 +10,53 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Letiltjuk a mobil felhúzós frissítést és a felesleges margókat
+# 2. Letiltjuk a felhúzós frissítést és megformázzuk a két térfelet
 st.markdown("""
 <style>
 html, body, #root, [data-testid="stAppViewContainer"], [data-testid="stMain"], section.main {
     overscroll-behavior-y: contain !important;
     overscroll-behavior: contain !important;
 }
-.block-container {
-    padding-top: 1rem !important;
-    padding-bottom: 1rem !important;
+
+/* Felső fél: 180 fokkal fejjel lefelé a partnernek */
+.partner-container {
+    transform: rotate(180deg);
+    background-color: #1a202c;
+    border: 2px solid #4a5568;
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: center;
 }
-header[data-testid="stHeader"] {
-    background: transparent !important;
+
+/* Alsó fél: Neked néz */
+.user-container {
+    background-color: #171923;
+    border: 2px solid #2b6cb0;
+    border-radius: 20px;
+    padding: 16px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.title-partner {
+    color: #63b3ed;
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.title-user {
+    color: #4fd1c5;
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+/* Mikrofon méretének megnövelése */
+div[data-testid="stAudioInput"] {
+    transform: scale(1.15);
+    margin: 10px auto;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -52,7 +84,7 @@ def get_hang_modell(hang_nev="Puck"):
         }
     )
 
-# 4. Beállítások oldalsávban
+# 4. Oldalsáv beállítások
 with st.sidebar:
     st.header("⚙️ Beállítások")
     nyelvek = sorted([lang.name for lang in pycountry.languages if hasattr(lang, "alpha_2")])
@@ -65,13 +97,14 @@ with st.sidebar:
 partner_voice = "Aoede" if partner_neme == "Nő" else "Puck"
 sajat_voice = "Puck"
 
-# Tolmácsoló függvény
-def tolmcsol(audio_base64, honnan, hova, beszelo_hang):
+def fordit_beszed(audio_data, honnan, hova, beszelo_hang):
     try:
-        raw_bytes = base64.b64decode(audio_base64)
         modell = get_hang_modell(beszelo_hang)
-        prompt = f"Profi tolmács vagy. Fordítsd le a hallott beszédet {honnan} nyelvről {hova} nyelvre. Csak a pontos lefordított mondatot mondd ki és írd le {hova} nyelven!"
-        tartalom = [prompt, {"mime_type": "audio/webm", "data": raw_bytes}]
+        prompt = f"Profi tolmács vagy. Fordítsd le a hallott szöveget {honnan} nyelvről {hova} nyelvre. Csak a lefordított mondatot mondd ki és írd le ezen a célnyelven ({hova}), mindenféle magyarázat nélkül!"
+        tartalom = [
+            prompt,
+            {"mime_type": "audio/wav", "data": audio_data}
+        ]
         valasz = modell.generate_content(tartalom)
         
         szov = ""
@@ -85,185 +118,54 @@ def tolmcsol(audio_base64, honnan, hova, beszelo_hang):
     except Exception as e:
         return f"Hiba: {e}", None
 
-# Query paraméterek kezelése a komponensből érkező hangadatokhoz
-params = st.query_params
-if "audio_data" in params and "speaker" in params:
-    speaker = params["speaker"]
-    b64_data = params["audio_data"]
-    st.query_params.clear()
-    
-    if speaker == "partner":
-        szov, snd = tolmcsol(b64_data, partner_lang, sajat_lang, partner_voice)
-        st.session_state["partner_text"] = szov
-        st.session_state["partner_audio"] = snd
-    else:
-        szov, snd = tolmcsol(b64_data, sajat_lang, partner_lang, sajat_voice)
-        st.session_state["user_text"] = szov
-        st.session_state["user_audio"] = snd
+# ===================================================
+# FELSŐ TÉRFÉL (PARTNER - 180 FOKKAL ELFORGATVA)
+# ===================================================
+st.markdown('<div class="partner-container">', unsafe_allow_html=True)
+st.markdown(f'<div class="title-partner">🗣️ PARTNER ({partner_lang})</div>', unsafe_allow_html=True)
 
-# 5. Teljes Képernyős Kétoldalas UI (HTML + JS)
-p_text = st.session_state.get("partner_text", "Itt jelenik meg a magyar tolmácsolás...")
-u_text = st.session_state.get("user_text", f"Itt jelenik meg a ({partner_lang}) tolmácsolás...")
+partner_mic = st.audio_input("Partner felvétel", key="p_mic_input", label_visibility="collapsed")
 
-p_audio_html = ""
-if st.session_state.get("partner_audio"):
-    b64_snd = base64.b64encode(st.session_state["partner_audio"]).decode()
-    p_audio_html = f'<audio autoplay src="data:audio/wav;base64,{b64_snd}"></audio>'
+if partner_mic is not None:
+    mic_id = partner_mic.file_id if hasattr(partner_mic, "file_id") else partner_mic.name
+    if st.session_state.get("last_p_id") != mic_id:
+        st.session_state["last_p_id"] = mic_id
+        with st.spinner("Fordítás..."):
+            audio_bytes = partner_mic.read()
+            sz, hg = fordit_beszed(audio_bytes, partner_lang, sajat_lang, partner_voice)
+            st.session_state["p_forditas"] = sz
+            st.session_state["p_hang"] = hg
 
-u_audio_html = ""
-if st.session_state.get("user_audio"):
-    b64_snd = base64.b64encode(st.session_state["user_audio"]).decode()
-    u_audio_html = f'<audio autoplay src="data:audio/wav;base64,{b64_snd}"></audio>'
+if st.session_state.get("p_forditas"):
+    st.info(st.session_state["p_forditas"])
+    if st.session_state.get("p_hang"):
+        st.audio(st.session_state["p_hang"], format="audio/wav", autoplay=True)
 
-components.html(f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<style>
-    * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }}
-    body {{ background-color: #0e1117; color: white; display: flex; flex-direction: column; height: 92vh; justify-content: space-between; overflow: hidden; }}
-    
-    /* Felső fél: 180 fokkal megfordítva a szemben ülőnek */
-    .half-partner {{
-        transform: rotate(180deg);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: #1e222d;
-        border-radius: 20px;
-        padding: 15px;
-        flex: 1;
-        margin-bottom: 8px;
-        border: 2px solid #2d3748;
-    }}
+st.markdown('</div>', unsafe_allow_html=True)
 
-    /* Alsó fél: Neked néz */
-    .half-user {{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: #1a2332;
-        border-radius: 20px;
-        padding: 15px;
-        flex: 1;
-        margin-top: 8px;
-        border: 2px solid #2b4365;
-    }}
+st.markdown("---")
 
-    .title {{ font-size: 14px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; color: #90cdf4; }}
-    .textbox {{ width: 95%; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; font-size: 15px; min-height: 45px; text-align: center; margin-bottom: 12px; }}
+# ===================================================
+# ALSÓ TÉRFÉL (TE - NORMÁL ÁLLÁS)
+# ===================================================
+st.markdown('<div class="user-container">', unsafe_allow_html=True)
+st.markdown(f'<div class="title-user">🗣️ ÉN ({sajat_lang})</div>', unsafe_allow_html=True)
 
-    /* Hatalmas mikrofon gombok */
-    .mic-btn {{
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        border: none;
-        background: #3182ce;
-        color: white;
-        font-size: 30px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-        transition: all 0.2s ease;
-    }}
+sajat_mic = st.audio_input("Saját felvétel", key="u_mic_input", label_visibility="collapsed")
 
-    .recording {{
-        background: #e53e3e !important;
-        animation: pulse 1.2s infinite;
-    }}
+if sajat_mic is not None:
+    mic_id = sajat_mic.file_id if hasattr(sajat_mic, "file_id") else sajat_mic.name
+    if st.session_state.get("last_u_id") != mic_id:
+        st.session_state["last_u_id"] = mic_id
+        with st.spinner("Tolmácsolás és beszéd..."):
+            audio_bytes = sajat_mic.read()
+            sz, hg = fordit_beszed(audio_bytes, sajat_lang, partner_lang, sajat_voice)
+            st.session_state["u_forditas"] = sz
+            st.session_state["u_hang"] = hg
 
-    @keyframes pulse {{
-        0% {{ transform: scale(1); }}
-        50% {{ transform: scale(1.12); }}
-        100% {{ transform: scale(1); }}
-    }}
-</style>
-</head>
-<body>
+if st.session_state.get("u_forditas"):
+    st.success(st.session_state["u_forditas"])
+    if st.session_state.get("u_hang"):
+        st.audio(st.session_state["u_hang"], format="audio/wav", autoplay=True)
 
-{p_audio_html}
-{u_audio_html}
-
-<!-- Felső térfél (Partner) -->
-<div class="half-partner">
-    <div class="title">🗣️ PARTNER ({partner_lang})</div>
-    <div class="textbox">{p_text}</div>
-    <button id="pBtn" class="mic-btn" onclick="toggleRecord('partner')">🎤</button>
-</div>
-
-<!-- Alsó térfél (Te) -->
-<div class="half-user">
-    <button id="uBtn" class="mic-btn" onclick="toggleRecord('user')">🎤</button>
-    <div class="textbox" style="margin-top: 12px; margin-bottom: 6px;">{u_text}</div>
-    <div class="title">🗣️ ÉN ({sajat_lang})</div>
-</div>
-
-<script>
-let mediaRecorder;
-let audioChunks = [];
-let activeSpeaker = null;
-
-async function toggleRecord(speaker) {
-    const pBtn = document.getElementById('pBtn');
-    const uBtn = document.getElementById('uBtn');
-
-    if (activeSpeaker === speaker) {
-        // Második koppintás: LEÁLLÍTÁS
-        mediaRecorder.stop();
-        pBtn.classList.remove('recording');
-        uBtn.classList.remove('recording');
-        activeSpeaker = null;
-    } else {
-        // Első koppintás: INDÍTÁS
-        if (activeSpeaker) return; // ha a másik megy, várjon
-        activeSpeaker = speaker;
-
-        const currentBtn = (speaker === 'partner') ? pBtn : uBtn;
-        currentBtn.classList.add('recording');
-
-        try {{
-            const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-
-            mediaRecorder.ondataavailable = event => {{
-                if (event.data.size > 0) audioChunks.push(event.data);
-            }};
-
-            mediaRecorder.onstop = () => {{
-                const audioBlob = new Blob(audioChunks, {{ type: 'audio/webm' }});
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-                reader.onloadend = () => {{
-                    const base64Audio = reader.result.split(',')[1];
-                    // Visszaküldés a Streamlitnek
-                    window.parent.postMessage({{
-                        type: "streamlit:setComponentValue",
-                        value: null
-                    }}, "*");
-                    const url = new URL(window.parent.location.href);
-                    url.searchParams.set("speaker", speaker);
-                    url.searchParams.set("audio_data", base64Audio);
-                    window.parent.location.href = url.href;
-                }};
-                stream.getTracks().forEach(track => track.stop());
-            }};
-
-            mediaRecorder.start();
-        }} catch(err) {{
-            alert("Mikrofon hozzáférés szükséges!");
-            currentBtn.classList.remove('recording');
-            activeSpeaker = null;
-        }}
-    }
-}
-</script>
-</body>
-</html>
-""", height=580)
+st.markdown('</div>', unsafe_allow_html=True)
