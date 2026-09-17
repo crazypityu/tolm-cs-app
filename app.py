@@ -9,10 +9,10 @@ st.set_page_config(
     layout="centered"
 )
 
-# 2. Lehúzásos frissítés letiltása és gombstílus
+# 2. Lehúzásos frissítés letiltása mobilon és gombstílus
 st.markdown("""
 <style>
-html, body, [data-testid="stAppViewContainer"] {
+html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"], section.main {
     overscroll-behavior-y: contain !important;
     overscroll-behavior: contain !important;
 }
@@ -126,5 +126,4 @@ if "eredmeny_szoveg" in st.session_state and st.session_state["eredmeny_szoveg"]
     st.success(st.session_state["eredmeny_szoveg"])
 
     if st.session_state.get("eredmeny_audio"):
-        # A Gemini közvetlen WAV/PCM audiója
         st.audio(st.session_state["eredmeny_audio"], format="audio/wav", autoplay=True)
