@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import pycountry
 
-# 1. Lap konfiguráció
+# 1. Oldalkonfiguráció
 st.set_page_config(
     page_title="Crazyfordító",
     page_icon="🗣️",
@@ -10,58 +10,59 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Letiltjuk a felhúzós frissítést és megformázzuk a két térfelet
+# 2. Célzott CSS: A Partner teljes zónáját elforgatjuk 180 fokkal
 st.markdown("""
 <style>
+/* Mobil lehúzás letiltása */
 html, body, #root, [data-testid="stAppViewContainer"], [data-testid="stMain"], section.main {
     overscroll-behavior-y: contain !important;
     overscroll-behavior: contain !important;
 }
 
-/* Felső fél: 180 fokkal fejjel lefelé a partnernek */
-.partner-container {
-    transform: rotate(180deg);
-    background-color: #1a202c;
-    border: 2px solid #4a5568;
-    border-radius: 20px;
-    padding: 16px;
-    margin-bottom: 20px;
-    text-align: center;
+/* Felső blokk (Partner) TELJES 180 fokos elforgatása közvetlenül a Streamlit kulcsára célozva */
+.st-key-partner_box, .st-key-partner_mic {
+    transform: rotate(180deg) !important;
+    transform-origin: center center !important;
 }
 
-/* Alsó fél: Neked néz */
-.user-container {
-    background-color: #171923;
-    border: 2px solid #2b6cb0;
-    border-radius: 20px;
-    padding: 16px;
-    margin-top: 20px;
-    text-align: center;
-}
-
-.title-partner {
-    color: #63b3ed;
-    font-size: 1.2rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.title-user {
-    color: #4fd1c5;
-    font-size: 1.2rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-/* Mikrofon méretének megnövelése */
+/* Mindkét mikrofon kezelőjének felnagyítása és kényelmessé tétele mobilon */
 div[data-testid="stAudioInput"] {
-    transform: scale(1.15);
-    margin: 10px auto;
+    background-color: #1f2937 !important;
+    border: 2px solid #3b82f6 !important;
+    border-radius: 16px !important;
+    padding: 10px !important;
+    margin: 10px 0 !important;
+}
+
+div[data-testid="stAudioInput"] button {
+    transform: scale(1.4) !important;
+}
+
+/* Kártyák és feliratok stílusa */
+.card-p {
+    background-color: #111827;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    text-align: center;
+    color: #93c5fd;
+    font-weight: bold;
+}
+.card-u {
+    background-color: #111827;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 10px;
+    text-align: center;
+    color: #6ee7b7;
+    font-weight: bold;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# 3. Gemini API konfiguráció
+# 3. Gemini konfiguráció
 api_kulcs = st.secrets.get("GEMINI_API_KEY")
 if not api_kulcs:
     st.error("Hiányzik a GEMINI_API_KEY a Streamlit Secrets-ből!")
@@ -97,75 +98,67 @@ with st.sidebar:
 partner_voice = "Aoede" if partner_neme == "Nő" else "Puck"
 sajat_voice = "Puck"
 
-def fordit_beszed(audio_data, honnan, hova, beszelo_hang):
+def fordit_beszed(audio_bytes, honnan, hova, hang):
     try:
-        modell = get_hang_modell(beszelo_hang)
-        prompt = f"Profi tolmács vagy. Fordítsd le a hallott szöveget {honnan} nyelvről {hova} nyelvre. Csak a lefordított mondatot mondd ki és írd le ezen a célnyelven ({hova}), mindenféle magyarázat nélkül!"
-        tartalom = [
-            prompt,
-            {"mime_type": "audio/wav", "data": audio_data}
-        ]
+        modell = get_hang_modell(hang)
+        prompt = f"Profi tolmács vagy. Fordítsd le a hallott beszédet {honnan} nyelvről {hova} nyelvre. Csak a pontos fordítást add vissza {hova} nyelven, semmi bevezető szöveget!"
+        tartalom = [prompt, {"mime_type": "audio/wav", "data": audio_bytes}]
         valasz = modell.generate_content(tartalom)
-        
         szov = ""
-        hang = None
+        hang_data = None
         for part in valasz.candidates[0].content.parts:
             if hasattr(part, "text") and part.text:
                 szov += part.text
             elif hasattr(part, "inline_data") and part.inline_data:
-                hang = part.inline_data.data
-        return szov, hang
+                hang_data = part.inline_data.data
+        return szov, hang_data
     except Exception as e:
         return f"Hiba: {e}", None
 
-# ===================================================
-# FELSŐ TÉRFÉL (PARTNER - 180 FOKKAL ELFORGATVA)
-# ===================================================
-st.markdown('<div class="partner-container">', unsafe_allow_html=True)
-st.markdown(f'<div class="title-partner">🗣️ PARTNER ({partner_lang})</div>', unsafe_allow_html=True)
+# ==============================================================================
+# FELSŐ TÉRFÉL (PARTNER - FEJJEL LEFELÉ FELÉD NÉZVE, A PARTNERNEK HELYESEN)
+# ==============================================================================
+with st.container(key="partner_box"):
+    st.markdown(f'<div class="card-p">🗣️ BESZÉLGŐPARTNER ({partner_lang})</div>', unsafe_allow_html=True)
+    
+    # Partner mikrofonja
+    p_audio = st.audio_input("Partner mikrofon", key="partner_mic", label_visibility="collapsed")
+    
+    if p_audio is not None:
+        p_id = p_audio.file_id if hasattr(p_audio, "file_id") else p_audio.name
+        if st.session_state.get("last_p") != p_id:
+            st.session_state["last_p"] = p_id
+            with st.spinner("Tolmácsolás..."):
+                sz, h = fordit_beszed(p_audio.read(), partner_lang, sajat_lang, partner_voice)
+                st.session_state["p_txt"] = sz
+                st.session_state["p_snd"] = h
 
-partner_mic = st.audio_input("Partner felvétel", key="p_mic_input", label_visibility="collapsed")
+    if st.session_state.get("p_txt"):
+        st.markdown(f'<div style="text-align:center; padding:10px; background:#1e3a8a; border-radius:8px; color:white; font-size:18px;">{st.session_state["p_txt"]}</div>', unsafe_allow_html=True)
+        if st.session_state.get("p_snd"):
+            st.audio(st.session_state["p_snd"], format="audio/wav", autoplay=True)
 
-if partner_mic is not None:
-    mic_id = partner_mic.file_id if hasattr(partner_mic, "file_id") else partner_mic.name
-    if st.session_state.get("last_p_id") != mic_id:
-        st.session_state["last_p_id"] = mic_id
-        with st.spinner("Fordítás..."):
-            audio_bytes = partner_mic.read()
-            sz, hg = fordit_beszed(audio_bytes, partner_lang, sajat_lang, partner_voice)
-            st.session_state["p_forditas"] = sz
-            st.session_state["p_hang"] = hg
+st.markdown("<hr style='border: 1px solid #374151; margin: 25px 0;'>", unsafe_allow_html=True)
 
-if st.session_state.get("p_forditas"):
-    st.info(st.session_state["p_forditas"])
-    if st.session_state.get("p_hang"):
-        st.audio(st.session_state["p_hang"], format="audio/wav", autoplay=True)
+# ==============================================================================
+# ALSÓ TÉRFÉL (TE - NORMÁL ÁLLÁSBAN)
+# ==============================================================================
+with st.container(key="user_box"):
+    # Saját mikrofonod
+    u_audio = st.audio_input("Saját mikrofon", key="user_mic", label_visibility="collapsed")
+    
+    if u_audio is not None:
+        u_id = u_audio.file_id if hasattr(u_audio, "file_id") else u_audio.name
+        if st.session_state.get("last_u") != u_id:
+            st.session_state["last_u"] = u_id
+            with st.spinner("Tolmácsolás és kimondás..."):
+                sz, h = fordit_beszed(u_audio.read(), sajat_lang, partner_lang, sajat_voice)
+                st.session_state["u_txt"] = sz
+                st.session_state["u_snd"] = h
 
-st.markdown('</div>', unsafe_allow_html=True)
+    if st.session_state.get("u_txt"):
+        st.markdown(f'<div style="text-align:center; padding:10px; background:#065f46; border-radius:8px; color:white; font-size:18px;">{st.session_state["u_txt"]}</div>', unsafe_allow_html=True)
+        if st.session_state.get("u_snd"):
+            st.audio(st.session_state["u_snd"], format="audio/wav", autoplay=True)
 
-st.markdown("---")
-
-# ===================================================
-# ALSÓ TÉRFÉL (TE - NORMÁL ÁLLÁS)
-# ===================================================
-st.markdown('<div class="user-container">', unsafe_allow_html=True)
-st.markdown(f'<div class="title-user">🗣️ ÉN ({sajat_lang})</div>', unsafe_allow_html=True)
-
-sajat_mic = st.audio_input("Saját felvétel", key="u_mic_input", label_visibility="collapsed")
-
-if sajat_mic is not None:
-    mic_id = sajat_mic.file_id if hasattr(sajat_mic, "file_id") else sajat_mic.name
-    if st.session_state.get("last_u_id") != mic_id:
-        st.session_state["last_u_id"] = mic_id
-        with st.spinner("Tolmácsolás és beszéd..."):
-            audio_bytes = sajat_mic.read()
-            sz, hg = fordit_beszed(audio_bytes, sajat_lang, partner_lang, sajat_voice)
-            st.session_state["u_forditas"] = sz
-            st.session_state["u_hang"] = hg
-
-if st.session_state.get("u_forditas"):
-    st.success(st.session_state["u_forditas"])
-    if st.session_state.get("u_hang"):
-        st.audio(st.session_state["u_hang"], format="audio/wav", autoplay=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="card-u">🗣️ ÉN ({sajat_lang})</div>', unsafe_allow_html=True)
