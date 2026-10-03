@@ -41,6 +41,10 @@ div[data-testid="stAudioInput"] {
     z-index: 10 !important;
 }
 
+div[data-testid="stAudioInput"] button {
+    transform: scale(1.3) !important;
+}
+
 /* Kártyák stílusa */
 .card-p {
     background-color: #111827;
@@ -74,7 +78,7 @@ if not api_kulcs:
 
 genai.configure(api_key=api_kulcs)
 
-# Javított, éles modellnév
+# Modell beállítása
 def get_hang_modell(hang_nev="Puck"):
     return genai.GenerativeModel(
         model_name="gemini-3.8-flash",
