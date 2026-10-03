@@ -27,7 +27,7 @@ jobs:
           mkdir -p app/src/main/java/com/istvan/tolmacs
           mkdir -p app/src/main/res/values
 
-          # settings.gradle a főkönyvtárba
+          # settings.gradle
           cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -178,7 +178,8 @@ jobs:
               }
           }
           EOF
-gradle assembleDebug
+
+          gradle assembleDebug
           mkdir -p output_apk
           find app/build/outputs/apk -name "*.apk" -exec cp {} output_apk/app-debug.apk \;
 
@@ -187,4 +188,3 @@ gradle assembleDebug
         with:
           name: Tolmacs-App-Android
           path: output_apk/app-debug.apk
-
