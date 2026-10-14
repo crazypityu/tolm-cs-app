@@ -1,5 +1,2 @@
 streamlit
-google-generativeai
-audio-recorder-streamlit
 pycountry
-gtts
