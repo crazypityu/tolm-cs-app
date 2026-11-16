@@ -10,17 +10,12 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS stílusok a nagy gombhoz és a tiszta, modern mobilbarát felülethez
+# Egyedi CSS stílusok a nagy gombhoz és a tiszta felülethez
 st.markdown("""
     <style>
     .main {
         background-color: #0e1117;
         color: #ffffff;
-    }
-    .big-button {
-        display: flex;
-        justify-content: center;
-        margin: 20px 0;
     }
     .stButton>button {
         width: 100%;
@@ -34,13 +29,6 @@ st.markdown("""
     }
     .stButton>button:hover {
         background-color: #3182ce;
-    }
-    .chat-box {
-        background-color: #1a202c;
-        padding: 15px;
-        border-radius: 10px;
-        margin: 10px 0;
-        border: 1px solid #2d3748;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -56,10 +44,23 @@ else:
     st.error("Hiányzik a GEMINI_API_KEY a Streamlit Secrets-ből!")
     st.stop()
 
-# Nyelvek lekérése pycountry-val
-languages = sorted([lang.name for lang in pycountry.languages if hasattr(lang, 'name')])
+# 1. Top 20 leggyakoribb nyelv listája (angol nevek a pycountry / modell kompatibilitás miatt)
+top_languages = [
+    "English", "Hungarian", "German", "French", "Spanish", 
+    "Italian", "Russian", "Chinese", "Japanese", "Arabic", 
+    "Portuguese", "Polish", "Dutch", "Romanian", "Turkish", 
+    "Ukrainian", "Czech", "Greek", "Swedish", "Korean"
+]
+
+# 2. Az összes többi nyelv lekérése a pycountry-ból bővítésként
+all_languages = sorted([lang.name for lang in pycountry.languages if hasattr(lang, 'name')])
+
+# Összefűzzük úgy, hogy a Top 20 legyen elöl, duplikáció nélkül, utánuk jövet a többi
+languages = top_languages + [lang for lang in all_languages if lang not in top_languages]
+
+# Alapértelmezett indexek beállítása
 default_source_idx = languages.index("English") if "English" in languages else 0
-default_target_idx = languages.index("Hungarian") if "Hungarian" in languages else 0
+default_target_idx = languages.index("Hungarian") if "Hungarian" in languages else 1
 
 col1, col2 = st.columns(2)
 with col1:
@@ -85,7 +86,7 @@ with col_stop:
     stop_btn = st.button("🔴 LEÁLLÍTÁS")
 
 if start_btn:
-    st.session_state.is_running = true
+    st.session_state.is_running = True
     st.session_state.transcript_buffer = ""
     st.session_state.translated_buffer = ""
 
@@ -101,15 +102,12 @@ translation_placeholder = st.empty()
 if st.session_state.is_running:
     st.info(f"A hallgatás aktív ({source_lang} ➡️ {target_lang}). Beszélj a mikrofonba...")
     
-    # Itt kötjük be a Streamlit hangrögzítőt vagy a folyamatos feldolgozási logikát
     audio_value = st.audio_input("Beszéljen most...")
 
     if audio_value is not None:
         with st.spinner("Fordítás folyamatban..."):
             try:
-                # Gemini modell hívás a fordításhoz és összefűzéshez
                 model = genai.GenerativeModel("gemini-2.0-flash")
-                
                 audio_bytes = audio_value.read()
                 
                 prompt = (
@@ -134,14 +132,13 @@ if st.session_state.is_running:
             except Exception as e:
                 st.error(f"Hiba történt a feldolgozás során: {e}")
 
-    # Eredmények megjelenítése a dobozokban
+    # Eredmények megjelenítése
     with transcript_placeholder.container():
         st.markdown(f"**Eredeti ({source_lang}):**\n\n{st.session_state.transcript_buffer or 'Várakozás a beszédre...'}")
 
     with translation_placeholder.container():
         st.markdown(f"**Fordítás ({target_lang}):**\n\n{st.session_state.translated_buffer or 'A fordítás itt jelenik meg...'}")
         
-    # Kis várakozás a 2 másodperces szünet / ciklus finomhangolásához
     time.sleep(0.5)
     if st.session_state.is_running:
         st.rerun()
