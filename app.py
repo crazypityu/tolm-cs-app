@@ -35,7 +35,7 @@ st.markdown("""
 
 # Címsor
 st.title("🎙️ Crazyfordító")
-st.write("Valós idejű, folyamatos fordító intelligens szünetfigyeléssel.")
+st.write("Valós idejű, automatikus kétirányú fordító (Magyar ⇄ Francia).")
 
 # API kulcs ellenőrzése
 if "GEMINI_API_KEY" in st.secrets:
@@ -46,7 +46,7 @@ else:
 
 # Nyelvlisták előkészítése
 top_languages = [
-    "English", "Hungarian", "German", "French", "Spanish", 
+    "Hungarian", "French", "English", "German", "Spanish", 
     "Italian", "Russian", "Chinese", "Japanese", "Arabic", 
     "Portuguese", "Polish", "Dutch", "Romanian", "Turkish", 
     "Ukrainian", "Czech", "Greek", "Swedish", "Korean"
@@ -54,28 +54,25 @@ top_languages = [
 all_languages = sorted([lang.name for lang in pycountry.languages if hasattr(lang, 'name')])
 languages = top_languages + [lang for lang in all_languages if lang not in top_languages]
 
-# Tiszta Session State inicializálás (kulcsok nélkül, sima változókkal)
+# Alapértelmezett beállítás: Magyar és Francia
 if "src_lang" not in st.session_state:
-    st.session_state.src_lang = "English" if "English" in languages else languages[0]
+    st.session_state.src_lang = "Hungarian" if "Hungarian" in languages else languages[0]
 if "tgt_lang" not in st.session_state:
-    st.session_state.tgt_lang = "Hungarian" if "Hungarian" in languages else languages[1]
+    st.session_state.tgt_lang = "French" if "French" in languages else languages[1]
 
-# Nyelvbeállítások felülete és a csere gomb
+# Nyelvbeállítások felülete és a csere gomb (ha mégis meg kellene fordítani)
 st.markdown("### 🌐 Nyelvbeállítások")
 col1, col_swap, col2 = st.columns([5, 1.5, 5])
 
 with col1:
-    # Index keresése biztonságosan
     try:
         idx1 = languages.index(st.session_state.src_lang)
     except ValueError:
         idx1 = 0
-    # Kulcs nélküli selectbox, ami közvetlenül a session_state-et frissíti
-    st.session_state.src_lang = st.selectbox("Forrás nyelv", languages, index=idx1)
+    st.session_state.src_lang = st.selectbox("1. Irány / Nyelv", languages, index=idx1)
 
 with col_swap:
     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-    # A csere gomb egyszerűen megcseréli a két stringet, majd újrarajzolja az oldalt
     if st.button("⇄ Csere", help="Nyelvek megfordítása"):
         st.session_state.src_lang, st.session_state.tgt_lang = st.session_state.tgt_lang, st.session_state.src_lang
         st.rerun()
@@ -85,7 +82,7 @@ with col2:
         idx2 = languages.index(st.session_state.tgt_lang)
     except ValueError:
         idx2 = 1
-    st.session_state.tgt_lang = st.selectbox("Cél nyelv", languages, index=idx2)
+    st.session_state.tgt_lang = st.selectbox("2. Irány / Nyelv", languages, index=idx2)
 
 # Állapotkezelés a szövegek gyűjtéséhez és összefűzéséhez
 if "transcript_buffer" not in st.session_state:
@@ -119,7 +116,7 @@ translation_placeholder = st.empty()
 
 # Fő ciklus a folyamatos hallgatáshoz / szünetfigyeléshez
 if st.session_state.is_running:
-    st.info(f"A hallgatás aktív ({st.session_state.src_lang} ➡️ {st.session_state.tgt_lang}). Beszélj a mikrofonba...")
+    st.info(f"A hallgatás aktív ({st.session_state.src_lang} ⇄ {st.session_state.tgt_lang} automatikus felismerés). Beszélj a mikrofonba...")
     
     audio_value = st.audio_input("Beszéljen most...")
 
@@ -129,10 +126,13 @@ if st.session_state.is_running:
                 model = genai.GenerativeModel("gemini-2.0-flash")
                 audio_bytes = audio_value.read()
                 
+                # Intelligens, kétirányú automata felismerő prompt
                 prompt = (
-                    f"Translate the following speech audio from {st.session_state.src_lang} to {st.session_state.tgt_lang}. "
-                    "If there is an existing context/buffer, intelligently append or continue the thought "
-                    "if it belongs to the same sentence structure, maintaining smooth flow."
+                    f"You are a bilingual live interpreter between '{st.session_state.src_lang}' and '{st.session_state.tgt_lang}'. "
+                    f"Listen to the speech audio, automatically detect which of these two languages the speaker is using, "
+                    f"and translate it accurately into the OTHER language. "
+                    f"If there is an existing translation context/buffer, intelligently append or continue the thought "
+                    f"if it belongs to the same sentence structure, maintaining smooth flow."
                 )
                 
                 response = model.generate_content([
@@ -153,10 +153,10 @@ if st.session_state.is_running:
 
     # Eredmények megjelenítése
     with transcript_placeholder.container():
-        st.markdown(f"**Eredeti ({st.session_state.src_lang}):**\n\n{st.session_state.transcript_buffer or 'Várakozás a beszédre...'}")
+        st.markdown(f"**Aktív páros:** {st.session_state.src_lang} ⇄ {st.session_state.tgt_lang}")
 
     with translation_placeholder.container():
-        st.markdown(f"**Fordítás ({st.session_state.tgt_lang}):**\n\n{st.session_state.translated_buffer or 'A fordítás itt jelenik meg...'}")
+        st.markdown(f"**Fordítás:**\n\n{st.session_state.translated_buffer or 'A fordítás itt jelenik meg...'}")
         
     time.sleep(0.5)
     if st.session_state.is_running:
