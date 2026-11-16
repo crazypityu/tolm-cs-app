@@ -60,7 +60,7 @@ if "src_lang" not in st.session_state:
 if "tgt_lang" not in st.session_state:
     st.session_state.tgt_lang = "French" if "French" in languages else languages[1]
 
-# Nyelvbeállítások felülete és a csere gomb (ha mégis meg kellene fordítani)
+# Nyelvbeállítások felülete és a csere gomb
 st.markdown("### 🌐 Nyelvbeállítások")
 col1, col_swap, col2 = st.columns([5, 1.5, 5])
 
@@ -116,7 +116,7 @@ translation_placeholder = st.empty()
 
 # Fő ciklus a folyamatos hallgatáshoz / szünetfigyeléshez
 if st.session_state.is_running:
-    st.info(f"A hallgatás aktív ({st.session_state.src_lang} ⇄ {st.session_state.tgt_lang} automatikus felismerés). Beszélj a mikrofonba...")
+    st.info(f"A hallgatás aktív ({st.session_state.src_lang} ⇄ {st.session_state.tgt_lang} automata felismerés). Beszélj a mikrofonba...")
     
     audio_value = st.audio_input("Beszéljen most...")
 
@@ -126,11 +126,13 @@ if st.session_state.is_running:
                 model = genai.GenerativeModel("gemini-2.0-flash")
                 audio_bytes = audio_value.read()
                 
-                # Intelligens, kétirányú automata felismerő prompt
+                # Szigorú fordító prompt: Automatikus kétirányú felismerés + TILOS válaszolni a kérdésekre!
                 prompt = (
-                    f"You are a bilingual live interpreter between '{st.session_state.src_lang}' and '{st.session_state.tgt_lang}'. "
+                    f"You are a strict live translation engine between '{st.session_state.src_lang}' and '{st.session_state.tgt_lang}'. "
                     f"Listen to the speech audio, automatically detect which of these two languages the speaker is using, "
                     f"and translate it accurately into the OTHER language. "
+                    f"CRITICAL: Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself. "
+                    f"DO NOT answer the question, DO NOT act as an assistant, and DO NOT add any commentary. "
                     f"If there is an existing translation context/buffer, intelligently append or continue the thought "
                     f"if it belongs to the same sentence structure, maintaining smooth flow."
                 )
