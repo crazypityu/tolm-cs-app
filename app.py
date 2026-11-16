@@ -54,45 +54,38 @@ top_languages = [
 all_languages = sorted([lang.name for lang in pycountry.languages if hasattr(lang, 'name')])
 languages = top_languages + [lang for lang in all_languages if lang not in top_languages]
 
-# Session state inicializálás a nyelvek tiszta kezeléséhez
-if "source_lang" not in st.session_state:
-    st.session_state.source_lang = "English" if "English" in languages else languages[0]
-if "target_lang" not in st.session_state:
-    st.session_state.target_lang = "Hungarian" if "Hungarian" in languages else languages[1]
-
-# Cserélő függvény
-def swap_languages():
-    st.session_state.source_lang, st.session_state.target_lang = st.session_state.target_lang, st.session_state.source_lang
+# Session state inicializálás a nyelvek tiszta tárolásához
+if "lang1" not in st.session_state:
+    st.session_state.lang1 = "English" if "English" in languages else languages[0]
+if "lang2" not in st.session_state:
+    st.session_state.lang2 = "Hungarian" if "Hungarian" in languages else languages[1]
 
 # Nyelvbeállítások felülete és a csere gomb
 st.markdown("### 🌐 Nyelvbeállítások")
 col1, col_swap, col2 = st.columns([5, 1.5, 5])
 
 with col1:
-    # Biztosítjuk, hogy az index ne lógjon ki
+    # A forrás nyelv a lang1 state-ből veszi az értéket
     try:
-        src_idx = languages.index(st.session_state.source_lang)
+        idx1 = languages.index(st.session_state.lang1)
     except ValueError:
-        src_idx = 0
-    
-    selected_source = st.selectbox("Forrás nyelv", languages, index=src_idx, key="src_sb")
-    if selected_source != st.session_state.source_lang:
-        st.session_state.source_lang = selected_source
+        idx1 = 0
+    st.session_state.lang1 = st.selectbox("Forrás nyelv", languages, index=idx1, key="source_select")
 
 with col_swap:
     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-    if st.button("⇄ Csere", help="Nyelvek megfordítása", on_click=swap_languages):
-        pass
+    # Ha rákattintanak a gombra, egyetlen egyszerű paranccsal megcseréljük a két változót
+    if st.button("⇄ Csere", help="Nyelvek megfordítása"):
+        st.session_state.lang1, st.session_state.lang2 = st.session_state.lang2, st.session_state.lang1
+        st.rerun()
 
 with col2:
+    # A cél nyelv a lang2 state-ből veszi az értéket
     try:
-        tgt_idx = languages.index(st.session_state.target_lang)
+        idx2 = languages.index(st.session_state.lang2)
     except ValueError:
-        tgt_idx = 1
-        
-    selected_target = st.selectbox("Cél nyelv", languages, index=tgt_idx, key="tgt_sb")
-    if selected_target != st.session_state.target_lang:
-        st.session_state.target_lang = selected_target
+        idx2 = 1
+    st.session_state.lang2 = st.selectbox("Cél nyelv", languages, index=idx2, key="target_select")
 
 # Állapotkezelés a szövegek gyűjtéséhez és összefűzéséhez
 if "transcript_buffer" not in st.session_state:
@@ -126,7 +119,7 @@ translation_placeholder = st.empty()
 
 # Fő ciklus a folyamatos hallgatáshoz / szünetfigyeléshez
 if st.session_state.is_running:
-    st.info(f"A hallgatás aktív ({st.session_state.source_lang} ➡️ {st.session_state.target_lang}). Beszélj a mikrofonba...")
+    st.info(f"A hallgatás aktív ({st.session_state.lang1} ➡️ {st.session_state.lang2}). Beszélj a mikrofonba...")
     
     audio_value = st.audio_input("Beszéljen most...")
 
@@ -137,7 +130,7 @@ if st.session_state.is_running:
                 audio_bytes = audio_value.read()
                 
                 prompt = (
-                    f"Translate the following speech audio from {st.session_state.source_lang} to {st.session_state.target_lang}. "
+                    f"Translate the following speech audio from {st.session_state.lang1} to {st.session_state.lang2}. "
                     "If there is an existing context/buffer, intelligently append or continue the thought "
                     "if it belongs to the same sentence structure, maintaining smooth flow."
                 )
@@ -160,10 +153,10 @@ if st.session_state.is_running:
 
     # Eredmények megjelenítése
     with transcript_placeholder.container():
-        st.markdown(f"**Eredeti ({st.session_state.source_lang}):**\n\n{st.session_state.transcript_buffer or 'Várakozás a beszédre...'}")
+        st.markdown(f"**Eredeti ({st.session_state.lang1}):**\n\n{st.session_state.transcript_buffer or 'Várakozás a beszédre...'}")
 
     with translation_placeholder.container():
-        st.markdown(f"**Fordítás ({st.session_state.target_lang}):**\n\n{st.session_state.translated_buffer or 'A fordítás itt jelenik meg...'}")
+        st.markdown(f"**Fordítás ({st.session_state.lang2}):**\n\n{st.session_state.translated_buffer or 'A fordítás itt jelenik meg...'}")
         
     time.sleep(0.5)
     if st.session_state.is_running:
