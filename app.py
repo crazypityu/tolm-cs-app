@@ -9,16 +9,26 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS stílusok a nagy gombhoz és a tiszta felülethez
+# Egyedi CSS stílusok: rögzített (sticky) gombok a tetején
 st.markdown("""
     <style>
     .main {
         background-color: #0e1117;
         color: #ffffff;
     }
+    /* Gombok rögzítése a felső részen, hogy mindig látszódjanak */
+    .sticky-buttons {
+        position: sticky;
+        top: 0;
+        background-color: #0e1117;
+        z-index: 999;
+        padding-bottom: 10px;
+        padding-top: 10px;
+        border-bottom: 1px solid #30363d;
+    }
     .stButton>button {
         width: 100%;
-        height: 4em;
+        height: 3.5em;
         font-size: 18px !important;
         font-weight: bold;
         color: white;
@@ -58,12 +68,14 @@ if "is_running" not in st.session_state:
 
 st.markdown("---")
 
-# Vezérlő gombok kétnyelvű felirattal
+# Vezérlő gombok egy fixen látszódó konténerben (Sticky)
+st.markdown('<div class="sticky-buttons">', unsafe_allow_html=True)
 col_start, col_stop = st.columns(2)
 with col_start:
     start_btn = st.button("🟢 INDÍTÁS / DÉMARRER")
 with col_stop:
     stop_btn = st.button("🔴 LEÁLLÍTÁS / ARRÊTER")
+st.markdown('</div>', unsafe_allow_html=True)
 
 if start_btn:
     st.session_state.is_running = True
@@ -88,7 +100,6 @@ if st.session_state.is_running:
                 model = genai.GenerativeModel("gemini-2.0-flash")
                 audio_bytes = audio_value.read()
                 
-                # Szigorú tolmács prompt
                 prompt = (
                     "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
                     "Listen to the speech audio, automatically detect whether the speaker is using Hungarian or French, "
