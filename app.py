@@ -1,7 +1,5 @@
-import time
 import streamlit as st
 from google import generativeai as genai
-from audio_recorder_streamlit import audio_recorder
 
 # Oldal konfiguráció
 st.set_page_config(
@@ -77,10 +75,12 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "is_running" not in st.session_state:
     st.session_state.is_running = False
+if "last_audio_bytes" not in st.session_state:
+    st.session_state.last_audio_bytes = None
 
 st.markdown("---")
 
-# Vezérlő gombok kétnyelvű felirattal a ragadós sávban
+# Vezérlő gombok kétnyelvű felirattal
 st.markdown('<div class="sticky-buttons">', unsafe_allow_html=True)
 col_start, col_stop = st.columns(2)
 with col_start:
@@ -92,70 +92,71 @@ st.markdown('</div>', unsafe_allow_html=True)
 if start_btn:
     st.session_state.is_running = True
     st.session_state.chat_history = []
+    st.session_state.last_audio_bytes = None
 
 if stop_btn:
     st.session_state.is_running = False
+    st.session_state.last_audio_bytes = None
 
-# Felület a párbeszédhez
-st.markdown("### 📝 Előzmények / Historique")
-chat_placeholder = st.empty()
-
-# Fő ciklus a hallgatáshoz
+# Fő ciklus a hallgatáshoz (NINCS végtelen st.rerun!)
 if st.session_state.is_running:
-    st.info("A tolmács aktív (Magyar ⇄ Francia). Kattints a rögzítéshez... | Interprète actif...")
+    st.info("A tolmács aktív (Magyar ⇄ Francia). Kattints a mikrofonra a rögzítéshez! | Interprète actif...")
     
-    # Megbízhatóbb audio_recorder komponens mobilos kompatibilitáshoz
-    audio_bytes = audio_recorder(text="Kattints a hangfelvételhez / Cliquez pour enregistrer", recording_color="#e53935", neutral_color="#2b6cb0", icon_size="32px")
+    # Natív, mobilbarát Streamlit mikrofon (nem akad össze az iframe-mel)
+    audio_value = st.audio_input("🎙️ Hangfelvétel / Enregistrement vocal")
 
-    if audio_bytes is not None and len(audio_bytes) > 0:
-        with st.spinner("Tolmácsolás... / Traduction..."):
-            try:
-                model = genai.GenerativeModel("gemini-2.5-flash")
-                
-                prompt = (
-                    "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
-                    "Listen to the speech audio, automatically detect whether the speaker is using Hungarian or French, "
-                    "and translate it into the OTHER language. "
-                    "CRITICAL: "
-                    "1. Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself without answering. "
-                    "2. Return your response strictly in the following format, separated by a pipe character (|): "
-                    "[Detected Original Text] | [Translated Text]"
-                )
-                
-                response = model.generate_content([
-                    prompt,
-                    {"mime_type": "audio/wav", "data": audio_bytes}
-                ])
-                
-                result_text = response.text.strip()
-                
-                if "|" in result_text:
-                    parts = result_text.split("|", 1)
-                    original = parts[0].strip()
-                    translated = parts[1].strip()
-                else:
-                    original = "Ismeretlen / Inconnu"
-                    translated = result_text
-
-                st.session_state.chat_history.append({"orig": original, "trans": translated})
-                
-            except Exception as e:
-                st.error(f"Hiba történt / Erreur: {e}")
-
-    # Eredmények megjelenítése
-    with chat_placeholder.container():
-        for chat in reversed(st.session_state.chat_history):
-            st.markdown(f"""
-                <div class="chat-box">
-                    <span style='color: #8b949e; font-size: 14px;'>Eredeti / Original:</span><br>
-                    <strong>{chat['orig']}</strong><br><br>
-                    <span style='color: #58a6ff; font-size: 14px;'>Fordítás / Traduction:</span><br>
-                    <strong>{chat['trans']}</strong>
-                </div>
-            """, unsafe_allow_html=True)
+    if audio_value is not None:
+        audio_bytes = audio_value.read()
         
-    time.sleep(0.5)
-    if st.session_state.is_running:
-        st.rerun()
+        # Csak akkor fordítunk, ha ez egy ÚJ hangfelvétel
+        if len(audio_bytes) > 0 and audio_bytes != st.session_state.last_audio_bytes:
+            st.session_state.last_audio_bytes = audio_bytes
+            
+            with st.spinner("Tolmácsolás... / Traduction..."):
+                try:
+                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    
+                    prompt = (
+                        "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
+                        "Listen to the speech audio, automatically detect whether the speaker is using Hungarian or French, "
+                        "and translate it into the OTHER language. "
+                        "CRITICAL: "
+                        "1. Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself without answering. "
+                        "2. Return your response strictly in the following format, separated by a pipe character (|): "
+                        "[Detected Original Text] | [Translated Text]"
+                    )
+                    
+                    response = model.generate_content([
+                        prompt,
+                        {"mime_type": "audio/wav", "data": audio_bytes}
+                    ])
+                    
+                    result_text = response.text.strip()
+                    
+                    if "|" in result_text:
+                        parts = result_text.split("|", 1)
+                        original = parts[0].strip()
+                        translated = parts[1].strip()
+                    else:
+                        original = "Ismeretlen / Inconnu"
+                        translated = result_text
+
+                    st.session_state.chat_history.append({"orig": original, "trans": translated})
+                    
+                except Exception as e:
+                    st.error(f"Hiba történt / Erreur: {e}")
+
+    # Előzmények megjelenítése
+    st.markdown("### 📝 Előzmények / Historique")
+    for chat in reversed(st.session_state.chat_history):
+        st.markdown(f"""
+            <div class="chat-box">
+                <span style='color: #8b949e; font-size: 14px;'>Eredeti / Original:</span><br>
+                <strong>{chat['orig']}</strong><br><br>
+                <span style='color: #58a6ff; font-size: 14px;'>Fordítás / Traduction:</span><br>
+                <strong>{chat['trans']}</strong>
+            </div>
+        """, unsafe_allow_html=True)
+
 else:
     st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra. | L'interprète est arrêté.")
