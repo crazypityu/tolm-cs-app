@@ -1,129 +1,81 @@
 import streamlit as st
 from google import generativeai as genai
 
-# Oldal konfiguráció
 st.set_page_config(
     page_title="Crazyfordító - Two-Way Interpreter",
     page_icon="🎙️",
     layout="centered"
 )
 
-# Egyedi CSS: Kétnyelvű, kesztyűbarát gombok és sötét módú elrendezés
 st.markdown("""
     <style>
-    .main {
-        background-color: #0e1117;
-        color: #ffffff;
-    }
+    .main { background-color: #0e1117; color: #ffffff; }
     .sticky-buttons {
-        position: sticky;
-        top: 0;
-        background-color: #0e1117;
-        z-index: 999;
-        padding-bottom: 10px;
-        padding-top: 10px;
-        border-bottom: 1px solid #30363d;
+        position: sticky; top: 0; background-color: #0e1117;
+        z-index: 999; padding: 10px 0; border-bottom: 1px solid #30363d;
     }
     div.stButton > button {
-        width: 100% !important;
-        height: 4.2em !important;
-        font-size: 14px !important;
-        font-weight: bold;
-        color: white !important;
-        border-radius: 16px !important;
-        border: none !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        width: 100% !important; height: 4.2em !important;
+        font-size: 14px !important; font-weight: bold; color: white !important;
+        border-radius: 16px !important; border: none !important;
         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
-        background-color: #1b5e20 !important;
-    }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover {
-        background-color: #2e7d32 !important;
-    }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
-        background-color: #b71c1c !important;
-    }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover {
-        background-color: #c62828 !important;
-    }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button { background-color: #1b5e20 !important; }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button { background-color: #b71c1c !important; }
     .chat-box {
-        background-color: #161b22;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 10px;
-        border: 1px solid #30363d;
+        background-color: #161b22; padding: 15px; border-radius: 10px;
+        margin-bottom: 10px; border: 1px solid #30363d;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Címsor két nyelven
 st.title("🎙️ Crazyfordító / Traducteur")
 st.write("Élő kétnyelvű szinkrontolmács | Interprète bilingue (Magyar ⇄ Français)")
 
-# API kulcs ellenőrzése
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
     st.error("Hiányzik a GEMINI_API_KEY a Streamlit Secrets-ből!")
     st.stop()
 
-# Állapotkezelés
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "is_running" not in st.session_state:
-    st.session_state.is_running = False
+    st.session_state.is_running = True  # Alapból legyen bekapcsolva, hogy egyből tudd tesztelni!
 if "last_audio_bytes" not in st.session_state:
     st.session_state.last_audio_bytes = None
 
-st.markdown("---")
-
-# Vezérlő gombok kétnyelvű felirattal
 st.markdown('<div class="sticky-buttons">', unsafe_allow_html=True)
 col_start, col_stop = st.columns(2)
 with col_start:
-    start_btn = st.button("🟢 INDÍTÁS / DÉMARRER")
+    if st.button("🟢 INDÍTÁS / TÖRLÉS"):
+        st.session_state.is_running = True
+        st.session_state.chat_history = []
+        st.session_state.last_audio_bytes = None
 with col_stop:
-    stop_btn = st.button("🔴 LEÁLLÍTÁS / ARRÊTER")
+    if st.button("🔴 LEÁLLÍTÁS / ARRÊTER"):
+        st.session_state.is_running = False
 st.markdown('</div>', unsafe_allow_html=True)
 
-if start_btn:
-    st.session_state.is_running = True
-    st.session_state.chat_history = []
-    st.session_state.last_audio_bytes = None
-
-if stop_btn:
-    st.session_state.is_running = False
-    st.session_state.last_audio_bytes = None
-
-# Fő ciklus a hallgatáshoz (NINCS végtelen st.rerun!)
 if st.session_state.is_running:
-    st.info("A tolmács aktív (Magyar ⇄ Francia). Kattints a mikrofonra a rögzítéshez! | Interprète actif...")
-    
-    # Natív, mobilbarát Streamlit mikrofon (nem akad össze az iframe-mel)
-    audio_value = st.audio_input("🎙️ Hangfelvétel / Enregistrement vocal")
+    # A natív Streamlit hangrögzítő (saját hullámformával és Stop gombbal)
+    audio_value = st.audio_input("1. Nyomj a mikrofonra -> 2. Beszélj -> 3. Nyomj a STOP-ra:")
 
     if audio_value is not None:
         audio_bytes = audio_value.read()
+        st.caption(f"Rögzített adatcsomag: {len(audio_bytes)} bájt")
         
-        # Csak akkor fordítunk, ha ez egy ÚJ hangfelvétel
         if len(audio_bytes) > 0 and audio_bytes != st.session_state.last_audio_bytes:
             st.session_state.last_audio_bytes = audio_bytes
             
             with st.spinner("Tolmácsolás... / Traduction..."):
                 try:
                     model = genai.GenerativeModel("gemini-2.5-flash")
-                    
                     prompt = (
-                        "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
-                        "Listen to the speech audio, automatically detect whether the speaker is using Hungarian or French, "
-                        "and translate it into the OTHER language. "
-                        "CRITICAL: "
-                        "1. Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself without answering. "
-                        "2. Return your response strictly in the following format, separated by a pipe character (|): "
-                        "[Detected Original Text] | [Translated Text]"
+                        "You are a strict simultaneous interpreter between Hungarian and French. "
+                        "Detect the language and translate into the OTHER language. "
+                        "Do NOT answer questions, only translate them. "
+                        "Format strictly as: [Original Text] | [Translated Text]"
                     )
                     
                     response = model.generate_content([
@@ -132,21 +84,15 @@ if st.session_state.is_running:
                     ])
                     
                     result_text = response.text.strip()
-                    
                     if "|" in result_text:
-                        parts = result_text.split("|", 1)
-                        original = parts[0].strip()
-                        translated = parts[1].strip()
+                        orig, trans = [p.strip() for p in result_text.split("|", 1)]
                     else:
-                        original = "Ismeretlen / Inconnu"
-                        translated = result_text
+                        orig, trans = "Felismert szöveg", result_text
 
-                    st.session_state.chat_history.append({"orig": original, "trans": translated})
-                    
+                    st.session_state.chat_history.append({"orig": orig, "trans": trans})
                 except Exception as e:
                     st.error(f"Hiba történt / Erreur: {e}")
 
-    # Előzmények megjelenítése
     st.markdown("### 📝 Előzmények / Historique")
     for chat in reversed(st.session_state.chat_history):
         st.markdown(f"""
@@ -157,6 +103,5 @@ if st.session_state.is_running:
                 <strong>{chat['trans']}</strong>
             </div>
         """, unsafe_allow_html=True)
-
 else:
-    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra. | L'interprète est arrêté.")
+    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra.")
