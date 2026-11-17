@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 from google import generativeai as genai
 
 st.set_page_config(
@@ -53,41 +52,8 @@ if stop_btn:
     st.session_state.is_running = False
     st.session_state.last_audio_bytes = None
 
-diag_html = (
-    "<div style='background:#161b22; padding:12px; border-radius:10px; border:1px solid #f39c12; font-family:sans-serif;'>"
-    "<button onclick='testMic()' style='background:#f39c12; color:#000; padding:12px; border:none; border-radius:8px; font-weight:bold; width:100%; font-size:15px;'>"
-    "🔍 MIKROFON HIBA KIOLVASÁSA (Kattints ide!)"
-    "</button>"
-    "<p id='mic-status' style='color:#ffffff; font-size:14px; margin:10px 0 0 0;'>"
-    "Állapot: Nyomd meg a sárga gombot a teszthez!"
-    "</p></div>"
-    "<script>"
-    "async function testMic() {"
-    "  const status = document.getElementById('mic-status');"
-    "  status.style.color = '#ffeb3b';"
-    "  status.innerText = '⏳ Mikrofon tesztelése...';"
-    "  try {"
-    "    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {"
-    "      status.style.color = '#ff5252';"
-    "      status.innerText = '❌ HIBA: A böngésző letiltotta a mediaDevices API-t!';"
-    "      return;"
-    "    }"
-    "    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });"
-    "    const label = stream.getAudioTracks()[0].label || 'Alapértelmezett mikrofon';"
-    "    status.style.color = '#4caf50';"
-    "    status.innerText = '✅ SIKER! A mikrofon működik: ' + label;"
-    "    stream.getTracks().forEach(t => t.stop());"
-    "  } catch (err) {"
-    "    status.style.color = '#ff5252';"
-    "    status.innerText = '❌ HIBA (' + err.name + '): ' + err.message;"
-    "  }"
-    "}"
-    "</script>"
-)
-components.html(diag_html, height=135)
-
 if st.session_state.is_running:
-    st.info("A tolmács aktív. Kattints a lenti mikrofonra a rögzítéshez!")
+    st.info("A tolmács aktív (Magyar ⇄ Francia). Kattints a mikrofonra a rögzítéshez! | Interprète actif...")
     audio_value = st.audio_input("🎙️ Hangfelvétel / Enregistrement vocal")
 
     if audio_value is not None:
@@ -96,12 +62,15 @@ if st.session_state.is_running:
             st.session_state.last_audio_bytes = audio_bytes
             with st.spinner("Tolmácsolás... / Traduction..."):
                 try:
-                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    model = genai.GenerativeModel("gemini-3.8-flash")
                     prompt = (
-                        "You are a strict simultaneous interpreter between Hungarian and French. "
-                        "Detect the language and translate into the OTHER language. "
-                        "Do NOT answer questions, only translate them. "
-                        "Format strictly as: [Original Text] | [Translated Text]"
+                        "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
+                        "Listen to the speech audio, automatically detect whether the speaker is using Hungarian or French, "
+                        "and translate it into the OTHER language. "
+                        "CRITICAL: "
+                        "1. Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself without answering. "
+                        "2. Return your response strictly in the following format, separated by a pipe character (|): "
+                        "[Detected Original Text] | [Translated Text]"
                     )
                     response = model.generate_content([
                         prompt,
@@ -113,7 +82,7 @@ if st.session_state.is_running:
                         original = parts[0].strip()
                         translated = parts[1].strip()
                     else:
-                        original = "Felismert szöveg"
+                        original = "Felismert szöveg / Texte reconnu"
                         translated = result_text
                     st.session_state.chat_history.append({"orig": original, "trans": translated})
                 except Exception as e:
@@ -131,4 +100,4 @@ if st.session_state.is_running:
         )
         st.markdown(box_html, unsafe_allow_html=True)
 else:
-    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra.")
+    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra. | L'interprète est arrêté.")
