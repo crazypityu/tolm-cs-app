@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS stílusok: rögzített (sticky) felső sáv és egymás melletti, kör alakú gombok
+# Egyedi CSS: Extra nagy, kesztyűbarát gombok mobilon is egymás mellett
 st.markdown("""
     <style>
     .main {
@@ -21,36 +21,48 @@ st.markdown("""
         top: 0;
         background-color: #0e1117;
         z-index: 999;
-        padding-bottom: 10px;
-        padding-top: 10px;
+        padding-bottom: 12px;
+        padding-top: 12px;
         border-bottom: 1px solid #30363d;
     }
-    /* Gombok formázása: mobilon is egymás mellett, lekerekített/kör alakú megjelenés */
+    /* Streamlit oszlopok kényszerítése egymás mellé mobilon is */
+    [data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 12px;
+    }
+    [data-testid="column"] {
+        width: 50% !important;
+        flex: 1 !important;
+        min-width: unset !important;
+    }
+    /* Extra nagy, kesztyűbarát gombok */
     div.stButton > button {
         width: 100% !important;
-        height: 3.5em !important;
-        font-size: 16px !important;
+        height: 5.5em !important;
+        font-size: 18px !important;
         font-weight: bold;
-        color: white;
-        border-radius: 50px !important;
-        border: none;
+        color: white !important;
+        border-radius: 20px !important;
+        border: none !important;
         display: flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.4);
     }
-    /* Indító gomb zöldes tónus */
-    div.row-widget.stHorizontal > div:nth-child(1) button {
+    /* Indító gomb zöld (extra hangsúlyos) */
+    div.stHorizontalBlock > div:nth-child(1) button {
+        background-color: #1b5e20 !important;
+    }
+    div.stHorizontalBlock > div:nth-child(1) button:hover {
         background-color: #2e7d32 !important;
     }
-    div.row-widget.stHorizontal > div:nth-child(1) button:hover {
-        background-color: #388e3c !important;
+    /* Leállító gomb piros (extra hangsúlyos) */
+    div.stHorizontalBlock > div:nth-child(2) button {
+        background-color: #b71c1c !important;
     }
-    /* Leállító gomb pirosas tónus */
-    div.row-widget.stHorizontal > div:nth-child(2) button {
+    div.stHorizontalBlock > div:nth-child(2) button:hover {
         background-color: #c62828 !important;
-    }
-    div.row-widget.stHorizontal > div:nth-child(2) button:hover {
-        background-color: #d32f2f !important;
     }
     .chat-box {
         background-color: #161b22;
@@ -63,8 +75,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Címsor két nyelven
-st.title("🎙️ Crazyfordító / Traducteur")
-st.write("Élő kétnyelvű szinkrontolmács | Interprète simultané bilingue (Magyar ⇄ Français)")
+st.title("🎙️ Crazyfordító")
+st.write("Élő kétnyelvű szinkrontolmács (Magyar ⇄ Français)")
 
 # API kulcs ellenőrzése
 if "GEMINI_API_KEY" in st.secrets:
@@ -81,7 +93,7 @@ if "is_running" not in st.session_state:
 
 st.markdown("---")
 
-# Vezérlő gombok egy fixen látszódó konténerben, egymás mellett
+# Vezérlő gombok egymás mellett a ragadós sávban
 st.markdown('<div class="sticky-buttons">', unsafe_allow_html=True)
 col_start, col_stop = st.columns(2)
 with col_start:
@@ -98,17 +110,17 @@ if stop_btn:
     st.session_state.is_running = False
 
 # Felület a párbeszédhez
-st.markdown("### 📝 Beszélgetési Előzmények / Historique")
+st.markdown("### 📝 Előzmények / Historique")
 chat_placeholder = st.empty()
 
 # Fő ciklus a hallgatáshoz
 if st.session_state.is_running:
-    st.info("A tolmács aktív (Magyar ⇄ Francia). Beszéljen a mikrofonba... | Interprète actif. Parlez...")
+    st.info("A tolmács aktív (Magyar ⇄ Francia). Beszéljen a mikrofonba... | Interprète actif...")
     
     audio_value = st.audio_input("Beszéljen most / Parlez maintenant...")
 
     if audio_value is not None:
-        with st.spinner("Tolmácsolás folyamatban... / Traduction..."):
+        with st.spinner("Tolmácsolás... / Traduction..."):
             try:
                 model = genai.GenerativeModel("gemini-2.0-flash")
                 audio_bytes = audio_value.read()
@@ -159,4 +171,4 @@ if st.session_state.is_running:
     if st.session_state.is_running:
         st.rerun()
 else:
-    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra. | L'interprète est arrêté.")
+    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra.")
