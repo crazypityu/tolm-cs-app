@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS: Extra nagy, kesztyűbarát gombok mobilon is egymás mellett
+# Egyedi CSS: Gombok szigorúan egy vonalban, egymás mellett, extra nagy méretben
 st.markdown("""
     <style>
     .main {
@@ -25,22 +25,24 @@ st.markdown("""
         padding-top: 12px;
         border-bottom: 1px solid #30363d;
     }
-    /* Streamlit oszlopok kényszerítése egymás mellé mobilon is */
+    /* Biztosítjuk, hogy a Streamlit oszlopok mobilon is pont 50-50%-ban egymás mellett legyenek */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
-        gap: 12px;
+        flex-wrap: nowrap !important;
+        gap: 10px !important;
+        width: 100% !important;
     }
     [data-testid="column"] {
         width: 50% !important;
-        flex: 1 !important;
-        min-width: unset !important;
+        flex: 1 1 50% !important;
+        min-width: 0 !important;
     }
     /* Extra nagy, kesztyűbarát gombok */
     div.stButton > button {
         width: 100% !important;
         height: 5.5em !important;
-        font-size: 18px !important;
+        font-size: 17px !important;
         font-weight: bold;
         color: white !important;
         border-radius: 20px !important;
@@ -49,15 +51,16 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        white-space: nowrap !important;
     }
-    /* Indító gomb zöld (extra hangsúlyos) */
+    /* Indító gomb zöld */
     div.stHorizontalBlock > div:nth-child(1) button {
         background-color: #1b5e20 !important;
     }
     div.stHorizontalBlock > div:nth-child(1) button:hover {
         background-color: #2e7d32 !important;
     }
-    /* Leállító gomb piros (extra hangsúlyos) */
+    /* Leállító gomb piros */
     div.stHorizontalBlock > div:nth-child(2) button {
         background-color: #b71c1c !important;
     }
