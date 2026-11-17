@@ -1,6 +1,7 @@
 import time
 import streamlit as st
 from google import generativeai as genai
+from audio_recorder_streamlit import audio_recorder
 
 # Oldal konfiguráció
 st.set_page_config(
@@ -9,7 +10,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS: Kétnyelvű, kesztyűbarát gombok, tiszta elrendezés
+# Egyedi CSS: Kétnyelvű, kesztyűbarát gombok
 st.markdown("""
     <style>
     .main {
@@ -25,7 +26,6 @@ st.markdown("""
         padding-top: 10px;
         border-bottom: 1px solid #30363d;
     }
-    /* Gombok stílusa és mérete */
     div.stButton > button {
         width: 100% !important;
         height: 4.2em !important;
@@ -39,14 +39,12 @@ st.markdown("""
         justify-content: center;
         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
-    /* Indító gomb zöld */
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
         background-color: #1b5e20 !important;
     }
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover {
         background-color: #2e7d32 !important;
     }
-    /* Leállító gomb piros */
     div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
         background-color: #b71c1c !important;
     }
@@ -104,15 +102,15 @@ chat_placeholder = st.empty()
 
 # Fő ciklus a hallgatáshoz
 if st.session_state.is_running:
-    st.info("A tolmács aktív (Magyar ⇄ Francia). Beszéljen a mikrofonba... | Interprète actif...")
+    st.info("A tolmács aktív (Magyar ⇄ Francia). Kattints a rögzítéshez... | Interprète actif...")
     
-    audio_value = st.audio_input("Beszéljen most / Parlez maintenant...")
+    # Itt a megbízhatóbb audio_recorder komponenst használjuk mobilos kompatibilitáshoz
+    audio_bytes = audio_recorder(text="Kattints a hangfelvételhez / Cliquez pour enregistrer", recording_color="#e53935", neutral_color="#2b6cb0", icon_size="32px")
 
-    if audio_value is not None:
+    if audio_bytes is not None and len(audio_bytes) > 0:
         with st.spinner("Tolmácsolás... / Traduction..."):
             try:
                 model = genai.GenerativeModel("gemini-2.0-flash")
-                audio_bytes = audio_value.read()
                 
                 prompt = (
                     "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
