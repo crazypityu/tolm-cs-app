@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS: Stabil, egymás melletti gombok mobilon is, kitöltve a rendelkezésre álló helyet
+# Egyedi CSS: Kétnyelvű, kesztyűbarát gombok, tiszta elrendezés
 st.markdown("""
     <style>
     .main {
@@ -25,22 +25,11 @@ st.markdown("""
         padding-top: 10px;
         border-bottom: 1px solid #30363d;
     }
-    /* Biztosítjuk, hogy a Streamlit oszlopok pontosan 50-50%-ot vigyenek */
-    div[data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        width: 100% !important;
-        gap: 8px !important;
-    }
-    div[data-testid="column"] {
-        flex: 1 1 50% !important;
-        min-width: 0 !important;
-    }
-    /* Kesztyűbarát, de a képernyőn maradó gombok */
+    /* Gombok stílusa és mérete */
     div.stButton > button {
         width: 100% !important;
-        height: 4.5em !important;
-        font-size: 16px !important;
+        height: 4.2em !important;
+        font-size: 14px !important;
         font-weight: bold;
         color: white !important;
         border-radius: 16px !important;
@@ -49,7 +38,6 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        white-space: nowrap !important;
     }
     /* Indító gomb zöld */
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
@@ -76,8 +64,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Címsor két nyelven
-st.title("🎙️ Crazyfordító")
-st.write("Élő kétnyelvű szinkrontolmács (Magyar ⇄ Français)")
+st.title("🎙️ Crazyfordító / Traducteur")
+st.write("Élő kétnyelvű szinkrontolmács | Interprète bilingue (Magyar ⇄ Français)")
 
 # API kulcs ellenőrzése
 if "GEMINI_API_KEY" in st.secrets:
@@ -94,13 +82,13 @@ if "is_running" not in st.session_state:
 
 st.markdown("---")
 
-# Vezérlő gombok egymás mellett a ragadós sávban
+# Vezérlő gombok kétnyelvű felirattal a ragadós sávban
 st.markdown('<div class="sticky-buttons">', unsafe_allow_html=True)
 col_start, col_stop = st.columns(2)
 with col_start:
-    start_btn = st.button("🟢 INDÍTÁS")
+    start_btn = st.button("🟢 INDÍTÁS / DÉMARRER")
 with col_stop:
-    stop_btn = st.button("🔴 LEÁLLÍTÁS")
+    stop_btn = st.button("🔴 LEÁLLÍTÁS / ARRÊTER")
 st.markdown('</div>', unsafe_allow_html=True)
 
 if start_btn:
@@ -172,4 +160,4 @@ if st.session_state.is_running:
     if st.session_state.is_running:
         st.rerun()
 else:
-    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra.")
+    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra. | L'interprète est arrêté.")
