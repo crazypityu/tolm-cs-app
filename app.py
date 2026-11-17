@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS: Gombok szigorúan egy vonalban, egymás mellett, extra nagy méretben
+# Egyedi CSS: Stabil, egymás melletti gombok mobilon is, kitöltve a rendelkezésre álló helyet
 st.markdown("""
     <style>
     .main {
@@ -21,50 +21,48 @@ st.markdown("""
         top: 0;
         background-color: #0e1117;
         z-index: 999;
-        padding-bottom: 12px;
-        padding-top: 12px;
+        padding-bottom: 10px;
+        padding-top: 10px;
         border-bottom: 1px solid #30363d;
     }
-    /* Biztosítjuk, hogy a Streamlit oszlopok mobilon is pont 50-50%-ban egymás mellett legyenek */
-    [data-testid="stHorizontalBlock"] {
+    /* Biztosítjuk, hogy a Streamlit oszlopok pontosan 50-50%-ot vigyenek */
+    div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 10px !important;
         width: 100% !important;
+        gap: 8px !important;
     }
-    [data-testid="column"] {
-        width: 50% !important;
+    div[data-testid="column"] {
         flex: 1 1 50% !important;
         min-width: 0 !important;
     }
-    /* Extra nagy, kesztyűbarát gombok */
+    /* Kesztyűbarát, de a képernyőn maradó gombok */
     div.stButton > button {
         width: 100% !important;
-        height: 5.5em !important;
-        font-size: 17px !important;
+        height: 4.5em !important;
+        font-size: 16px !important;
         font-weight: bold;
         color: white !important;
-        border-radius: 20px !important;
+        border-radius: 16px !important;
         border: none !important;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         white-space: nowrap !important;
     }
     /* Indító gomb zöld */
-    div.stHorizontalBlock > div:nth-child(1) button {
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
         background-color: #1b5e20 !important;
     }
-    div.stHorizontalBlock > div:nth-child(1) button:hover {
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover {
         background-color: #2e7d32 !important;
     }
     /* Leállító gomb piros */
-    div.stHorizontalBlock > div:nth-child(2) button {
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
         background-color: #b71c1c !important;
     }
-    div.stHorizontalBlock > div:nth-child(2) button:hover {
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover {
         background-color: #c62828 !important;
     }
     .chat-box {
