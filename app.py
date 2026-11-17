@@ -1,158 +1,103 @@
 import streamlit as st
 import streamlit.components.v1 as components
+from google import generativeai as genai
 
-st.set_page_config(
-    page_title="Crazyfordito",
-    page_icon="🎙️",
-    layout="wide"
-)
+st.set_page_config(page_title="Crazyfordito", page_icon="🎙️", layout="wide")
 
-# Margók teljes eltüntetése, hogy a gombok kifussanak a képernyő széléig
-css_code = (
+# Óriási, kesztyűbarát méretezés (zoom + hatalmas gombok és betűk)
+st.markdown(
     "<style>"
     ".main, .stApp { background-color: #0e1117; color: #ffffff; }"
-    ".block-container { padding: 0.2rem 0.4rem !important; max-width: 100% !important; }"
+    ".block-container { padding: 0.5rem !important; max-width: 100% !important; zoom: 1.35; }"
     "header, footer { visibility: hidden; height: 0px !important; }"
-    "iframe { width: 100% !important; border: none !important; }"
-    "</style>"
+    "div.stButton > button { width: 100% !important; height: 95px !important; font-size: 22px !important; font-weight: 900 !important; color: white !important; border-radius: 18px !important; border: 2px solid rgba(255,255,255,0.2) !important; }"
+    "div[data-testid='stHorizontalBlock'] > div:nth-child(1) button { background-color: #1b5e20 !important; }"
+    "div[data-testid='stHorizontalBlock'] > div:nth-child(2) button { background-color: #b71c1c !important; }"
+    "div[data-testid='stAudioInput'] { transform: scale(1.15); transform-origin: top left; width: 87% !important; margin: 15px 0 25px 0 !important; }"
+    ".chat-box { background-color: #161b22; padding: 18px; border-radius: 16px; margin-bottom: 14px; border: 2px solid #30363d; }"
+    ".orig-txt { color: #ffffff; font-size: 22px; font-weight: bold; margin: 6px 0 14px 0; }"
+    ".trans-txt { color: #58a6ff; font-size: 26px; font-weight: 900; margin-top: 6px; }"
+    "</style>",
+    unsafe_allow_html=True
 )
-st.markdown(css_code, unsafe_allow_html=True)
+
+st.markdown("<h2 style='text-align:center; margin:0;'>🎙️ Crazyfordító (HU ⇄ FR)</h2>", unsafe_allow_html=True)
 
 if "GEMINI_API_KEY" not in st.secrets:
-    st.error("Hiányzik a GEMINI_API_KEY a Streamlit Secrets-ből!")
+    st.error("Hiányzik a GEMINI_API_KEY!")
     st.stop()
 
-api_key = st.secrets["GEMINI_API_KEY"]
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-app_html = (
-    "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-    "<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>"
-    "<style>"
-    "* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }"
-    "body { background-color: #0e1117; color: #ffffff; font-family: system-ui, sans-serif; margin: 0; padding: 8px; }"
-    ".header-title { font-size: 26px; font-weight: 900; margin: 0 0 4px 0; text-align: center; }"
-    ".sub { color: #8b949e; font-size: 16px; margin-bottom: 14px; text-align: center; font-weight: bold; }"
-    ".btn-row { display: flex; gap: 14px; position: sticky; top: 0; background: #0e1117; padding: 8px 0; z-index: 99; }"
-    ".btn { flex: 1; height: 115px; border: 3px solid rgba(255,255,255,0.2); border-radius: 22px; color: white; font-size: 21px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 14px rgba(0,0,0,0.6); line-height: 1.25; text-transform: uppercase; }"
-    ".btn-start { background-color: #1b5e20; }"
-    ".btn-start:active { background-color: #4caf50; transform: scale(0.97); }"
-    ".btn-stop { background-color: #b71c1c; }"
-    ".btn-stop:active { background-color: #ff5252; transform: scale(0.97); }"
-    "#status-bar { background: #161b22; border: 2px solid #30363d; border-radius: 16px; padding: 16px; margin: 14px 0; font-size: 20px; font-weight: bold; color: #ffeb3b; text-align: center; }"
-    "#live-meter-bg { width: 100%; height: 14px; background: #0e1117; border-radius: 7px; margin-top: 12px; overflow: hidden; }"
-    "#live-meter { height: 100%; width: 0%; background: #00e676; border-radius: 7px; transition: width 0.08s; }"
-    ".history-title { font-size: 22px; font-weight: 900; margin: 18px 0 12px 0; color: #e6edf3; }"
-    "#chat-container { display: flex; flex-direction: column; gap: 16px; padding-bottom: 40px; }"
-    ".chat-box { background-color: #161b22; padding: 20px; border-radius: 18px; border: 2px solid #30363d; }"
-    ".label-orig { color: #8b949e; font-size: 16px; font-weight: bold; text-transform: uppercase; }"
-    ".text-orig { color: #ffffff; font-size: 23px; font-weight: bold; margin: 6px 0 18px 0; line-height: 1.35; }"
-    ".label-trans { color: #58a6ff; font-size: 16px; font-weight: bold; text-transform: uppercase; }"
-    ".text-trans { color: #58a6ff; font-size: 27px; font-weight: 900; margin-top: 6px; line-height: 1.35; }"
-    "</style></head><body>"
-    "<div class='header-title'>🎙️ Crazyfordító</div>"
-    "<div class='sub'>Magyar ⇄ Français</div>"
-    "<div class='btn-row'>"
-    "  <button class='btn btn-start' onclick='startInterpreter()'>🟢 INDÍTÁS<br>DÉMARRER</button>"
-    "  <button class='btn btn-stop' onclick='stopInterpreter()'>🔴 LEÁLLÍTÁS<br>ARRÊTER</button>"
-    "</div>"
-    "<div id='status-bar'>"
-    "  <span id='status-text'>⏹️ Áll. Nyomd meg a zöld INDÍTÁS gombot!</span>"
-    "  <div id='live-meter-bg'><div id='live-meter'></div></div>"
-    "</div>"
-    "<div class='history-title'>📝 Szövegláda / Historique</div>"
-    "<div id='chat-container'>"
-    "  <div class='chat-box' id='empty-box'>"
-    "    <div class='label-orig'>Eredeti / Original:</div>"
-    "    <div class='text-orig'>Várakozás a beszédre...</div>"
-    "    <div class='label-trans'>Fordítás / Traduction:</div>"
-    "    <div class='text-trans'>En attente de parole...</div>"
-    "  </div>"
-    "</div>"
-    "<script>"
-    "const API_KEY = '" + api_key + "';"
-    "let isRunning = false;"
-    "let mediaStream = null;"
-    "let audioContext = null;"
-    "let analyser = null;"
-    "let mediaRecorder = null;"
-    "let audioChunks = [];"
-    "let isSpeaking = false;"
-    "let silenceStart = 0;"
-    "let rafId = null;"
-    ""
-    "function setStatus(text, color) {"
-    "  const el = document.getElementById('status-text');"
-    "  el.innerText = text;"
-    "  el.style.color = color;"
-    "}"
-    ""
-    "async function startInterpreter() {"
-    "  if (isRunning) return;"
-    "  try {"
-    "    setStatus('⏳ Mikrofon indítása...', '#ffeb3b');"
-    "    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });"
-    "    isRunning = true;"
-    "    audioContext = new (window.AudioContext || window.webkitAudioContext)();"
-    "    const source = audioContext.createMediaStreamSource(mediaStream);"
-    "    analyser = audioContext.createAnalyser();"
-    "    analyser.fftSize = 512;"
-    "    source.connect(analyser);"
-    "    startNewSegment();"
-    "    monitorAudio();"
-    "    setStatus('🟢 HALLGATLAK! Beszélj bátran!', '#00e676');"
-    "  } catch (err) {"
-    "    setStatus('❌ Mikrofon hiba: ' + err.message, '#ff5252');"
-    "  }"
-    "}"
-    ""
-    "function stopInterpreter() {"
-    "  isRunning = false;"
-    "  if (rafId) cancelAnimationFrame(rafId);"
-    "  if (mediaRecorder && mediaRecorder.state !== 'inactive') {"
-    "    mediaRecorder.stop();"
-    "  }"
-    "  if (mediaStream) {"
-    "    mediaStream.getTracks().forEach(t => t.stop());"
-    "  }"
-    "  if (audioContext) {"
-    "    audioContext.close();"
-    "  }"
-    "  document.getElementById('live-meter').style.width = '0%';"
-    "  setStatus('🔴 LEÁLLÍTVA / ARRÊTÉ', '#ff5252');"
-    "}"
-    ""
-    "function startNewSegment() {"
-    "  if (!isRunning) return;"
-    "  audioChunks = [];"
-    "  isSpeaking = false;"
-    "  mediaRecorder = new MediaRecorder(mediaStream);"
-    "  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };"
-    "  mediaRecorder.onstop = () => {"
-    "    if (isSpeaking && audioChunks.length > 0) {"
-    "      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });"
-    "      sendToGemini(blob);"
-    "    }"
-    "    if (isRunning) startNewSegment();"
-    "  };"
-    "  mediaRecorder.start();"
-    "}"
-    ""
-    "function monitorAudio() {"
-    "  if (!isRunning) return;"
-    "  const data = new Uint8Array(analyser.frequencyBinCount);"
-    "  analyser.getByteFrequencyData(data);"
-    "  let sum = 0;"
-    "  for (let i = 0; i < data.length; i++) sum += data[i];"
-    "  const avg = sum / data.length;"
-    "  const meter = document.getElementById('live-meter');"
-    "  meter.style.width = Math.min(100, avg * 2.8) + '%';"
-    ""
-    "  const now = Date.now();"
-    "  if (avg > 14) {"
-    "    if (!isSpeaking) {"
-    "      isSpeaking = true;"
-    "      setStatus('🎙️ BESZÉD RÖGZÍTÉSE...', '#00e676');"
-    "    }"
-    "    silenceStart = now;"
-    "  } else if (isSpeaking && (now - silenceStart > 1300)) {"
-    "    if (mediaRecorder && media
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "is_running" not in st.session_state:
+    st.session_state.is_running = True
+if "last_audio" not in st.session_state:
+    st.session_state.last_audio = None
+
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🟢 INDÍTÁS\nDÉMARRER"):
+        st.session_state.is_running = True
+        st.session_state.last_audio = None
+with col2:
+    if st.button("🔴 LEÁLLÍTÁS\nARRÊTER"):
+        st.session_state.is_running = False
+
+if st.session_state.is_running:
+    audio_val = st.audio_input("🎙️ NYOMD MEG A MIKROFONT A BESZÉDHEZ:")
+
+    # Automatikusan rákattint a mikrofonra, amikor megnyomod az INDÍTÁS-t
+    components.html(
+        "<script>"
+        "const btn = window.parent.document.querySelector('[data-testid=\"stAudioInput\"] button');"
+        "if (btn && btn.getAttribute('aria-label') && btn.getAttribute('aria-label').includes('Record')) { btn.click(); }"
+        "</script>",
+        height=0
+    )
+
+    if audio_val is not None:
+        raw = audio_val.read()
+        if len(raw) > 0 and raw != st.session_state.last_audio:
+            st.session_state.last_audio = raw
+            with st.spinner("⚡ Fordítás... / Traduction..."):
+                try:
+                    model = genai.GenerativeModel("gemini-3.8-flash")
+                    prompt = (
+                        "Simultaneous interpreter between Hungarian and French. "
+                        "Detect language and translate into the OTHER language. "
+                        "Do NOT answer questions, only translate. "
+                        "Format strictly: [Original] | [Translation]"
+                    )
+                    res = model.generate_content([prompt, {"mime_type": "audio/wav", "data": raw}])
+                    txt = res.text.strip()
+                    orig, trans = txt.split("|", 1) if "|" in txt else ("Felismert szöveg", txt)
+                    st.session_state.chat_history.append({"orig": orig.strip(), "trans": trans.strip()})
+                except Exception as e:
+                    st.error(f"Hiba: {e}")
+else:
+    st.warning("⏹️ Leállítva / Arrêté. Nyomj a zöld INDÍTÁS gombra!")
+
+st.markdown("### 📝 Szövegláda / Historique")
+if not st.session_state.chat_history:
+    st.markdown(
+        "<div class='chat-box'>"
+        "<div style='color:#8b949e; font-size:15px;'>Eredeti / Original:</div>"
+        "<div class='orig-txt'>Várakozás a beszédre...</div>"
+        "<div style='color:#58a6ff; font-size:15px;'>Fordítás / Traduction:</div>"
+        "<div class='trans-txt'>En attente de parole...</div>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+for c in reversed(st.session_state.chat_history):
+    st.markdown(
+        f"<div class='chat-box'>"
+        f"<div style='color:#8b949e; font-size:15px;'>Eredeti / Original:</div>"
+        f"<div class='orig-txt'>{c['orig']}</div>"
+        f"<div style='color:#58a6ff; font-size:15px;'>Fordítás / Traduction:</div>"
+        f"<div class='trans-txt'>{c['trans']}</div>"
+        f"</div>",
+        unsafe_allow_html=True
+    )
