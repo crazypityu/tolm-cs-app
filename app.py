@@ -1,11 +1,10 @@
 import time
 import streamlit as st
-import pycountry
 from google import generativeai as genai
 
 # Oldal konfiguráció
 st.set_page_config(
-    page_title="Crazyfordító",
+    page_title="Crazyfordító - Szinkrontolmács",
     page_icon="🎙️",
     layout="centered"
 )
@@ -35,7 +34,7 @@ st.markdown("""
 
 # Címsor
 st.title("🎙️ Crazyfordító")
-st.write("Valós idejű, automatikus kétirányú fordító (Magyar ⇄ Francia).")
+st.write("Élő, szigorú szinkrontolmács (Magyar ⇄ Francia)")
 
 # API kulcs ellenőrzése
 if "GEMINI_API_KEY" in st.secrets:
@@ -44,49 +43,7 @@ else:
     st.error("Hiányzik a GEMINI_API_KEY a Streamlit Secrets-ből!")
     st.stop()
 
-# Nyelvlisták előkészítése
-top_languages = [
-    "Hungarian", "French", "English", "German", "Spanish", 
-    "Italian", "Russian", "Chinese", "Japanese", "Arabic", 
-    "Portuguese", "Polish", "Dutch", "Romanian", "Turkish", 
-    "Ukrainian", "Czech", "Greek", "Swedish", "Korean"
-]
-all_languages = sorted([lang.name for lang in pycountry.languages if hasattr(lang, 'name')])
-languages = top_languages + [lang for lang in all_languages if lang not in top_languages]
-
-# Alapértelmezett beállítás: Magyar és Francia
-if "src_lang" not in st.session_state:
-    st.session_state.src_lang = "Hungarian" if "Hungarian" in languages else languages[0]
-if "tgt_lang" not in st.session_state:
-    st.session_state.tgt_lang = "French" if "French" in languages else languages[1]
-
-# Nyelvbeállítások felülete és a csere gomb
-st.markdown("### 🌐 Nyelvbeállítások")
-col1, col_swap, col2 = st.columns([5, 1.5, 5])
-
-with col1:
-    try:
-        idx1 = languages.index(st.session_state.src_lang)
-    except ValueError:
-        idx1 = 0
-    st.session_state.src_lang = st.selectbox("1. Irány / Nyelv", languages, index=idx1)
-
-with col_swap:
-    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-    if st.button("⇄ Csere", help="Nyelvek megfordítása"):
-        st.session_state.src_lang, st.session_state.tgt_lang = st.session_state.tgt_lang, st.session_state.src_lang
-        st.rerun()
-
-with col2:
-    try:
-        idx2 = languages.index(st.session_state.tgt_lang)
-    except ValueError:
-        idx2 = 1
-    st.session_state.tgt_lang = st.selectbox("2. Irány / Nyelv", languages, index=idx2)
-
 # Állapotkezelés a szövegek gyűjtéséhez és összefűzéséhez
-if "transcript_buffer" not in st.session_state:
-    st.session_state.transcript_buffer = ""
 if "translated_buffer" not in st.session_state:
     st.session_state.translated_buffer = ""
 if "is_running" not in st.session_state:
@@ -97,44 +54,43 @@ st.markdown("---")
 # Vezérlő gombok
 col_start, col_stop = st.columns(2)
 with col_start:
-    start_btn = st.button("🟢 FORDÍTÁS INDÍTÁSA")
+    start_btn = st.button("🟢 TOLMÁCSOLÁS INDÍTÁSA")
 with col_stop:
     stop_btn = st.button("🔴 LEÁLLÍTÁS")
 
 if start_btn:
     st.session_state.is_running = True
-    st.session_state.transcript_buffer = ""
     st.session_state.translated_buffer = ""
 
 if stop_btn:
     st.session_state.is_running = False
 
-# Felület a szövegeknek
-st.markdown("### 📝 Élő szöveg és fordítás")
-transcript_placeholder = st.empty()
+# Felület a fordításnak
+st.markdown("### 📝 Élő Szinkrontolmácsolás")
 translation_placeholder = st.empty()
 
 # Fő ciklus a folyamatos hallgatáshoz / szünetfigyeléshez
 if st.session_state.is_running:
-    st.info(f"A hallgatás aktív ({st.session_state.src_lang} ⇄ {st.session_state.tgt_lang} automata felismerés). Beszélj a mikrofonba...")
+    st.info("A tolmács aktív (Magyar ⇄ Francia automata felismerés). Beszélj a mikrofonba...")
     
     audio_value = st.audio_input("Beszéljen most...")
 
     if audio_value is not None:
-        with st.spinner("Fordítás folyamatban..."):
+        with st.spinner("Tolmácsolás..."):
             try:
                 model = genai.GenerativeModel("gemini-2.0-flash")
                 audio_bytes = audio_value.read()
                 
-                # Szigorú fordító prompt: Automatikus kétirányú felismerés + TILOS válaszolni a kérdésekre!
+                # Szigorú szinkrontolmács prompt
                 prompt = (
-                    f"You are a strict live translation engine between '{st.session_state.src_lang}' and '{st.session_state.tgt_lang}'. "
-                    f"Listen to the speech audio, automatically detect which of these two languages the speaker is using, "
-                    f"and translate it accurately into the OTHER language. "
-                    f"CRITICAL: Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself. "
-                    f"DO NOT answer the question, DO NOT act as an assistant, and DO NOT add any commentary. "
-                    f"If there is an existing translation context/buffer, intelligently append or continue the thought "
-                    f"if it belongs to the same sentence structure, maintaining smooth flow."
+                    "You are a strict, professional simultaneous interpreter (szinkrontolmács) operating strictly between Hungarian and French. "
+                    "Listen to the speech audio, automatically detect whether the speaker is using Hungarian or French, "
+                    "and instantly translate it into the OTHER language (Hungarian to French, or French to Hungarian). "
+                    "CRITICAL RULES: "
+                    "1. Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself. "
+                    "DO NOT answer the question, DO NOT act as an assistant, and DO NOT add any commentary or conversational filler. "
+                    "2. If there is an existing translation context/buffer, intelligently append or continue the thought "
+                    "if it belongs to the same sentence structure, maintaining smooth flow."
                 )
                 
                 response = model.generate_content([
@@ -153,15 +109,12 @@ if st.session_state.is_running:
             except Exception as e:
                 st.error(f"Hiba történt a feldolgozás során: {e}")
 
-    # Eredmények megjelenítése
-    with transcript_placeholder.container():
-        st.markdown(f"**Aktív páros:** {st.session_state.src_lang} ⇄ {st.session_state.tgt_lang}")
-
+    # Eredmény megjelenítése
     with translation_placeholder.container():
-        st.markdown(f"**Fordítás:**\n\n{st.session_state.translated_buffer or 'A fordítás itt jelenik meg...'}")
+        st.markdown(f"**Fordítás:**\n\n{st.session_state.translated_buffer or 'A tolmácsolás itt jelenik meg...'}")
         
     time.sleep(0.5)
     if st.session_state.is_running:
         st.rerun()
 else:
-    st.warning("A fordítás le van állítva. Kattints a **FORDÍTÁS INDÍTÁSA** gombra a kezdéshez.")
+    st.warning("A tolmácsolás le van állítva. Kattints a **TOLMÁCSOLÁS INDÍTÁSA** gombra a kezdéshez.")
