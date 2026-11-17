@@ -9,14 +9,13 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS stílusok: rögzített (sticky) gombok a tetején
+# Egyedi CSS stílusok: rögzített (sticky) felső sáv és egymás melletti, kör alakú gombok
 st.markdown("""
     <style>
     .main {
         background-color: #0e1117;
         color: #ffffff;
     }
-    /* Gombok rögzítése a felső részen, hogy mindig látszódjanak */
     .sticky-buttons {
         position: sticky;
         top: 0;
@@ -26,18 +25,32 @@ st.markdown("""
         padding-top: 10px;
         border-bottom: 1px solid #30363d;
     }
-    .stButton>button {
-        width: 100%;
-        height: 3.5em;
-        font-size: 18px !important;
+    /* Gombok formázása: mobilon is egymás mellett, lekerekített/kör alakú megjelenés */
+    div.stButton > button {
+        width: 100% !important;
+        height: 3.5em !important;
+        font-size: 16px !important;
         font-weight: bold;
         color: white;
-        background-color: #2b6cb0;
-        border-radius: 12px;
+        border-radius: 50px !important;
         border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-    .stButton>button:hover {
-        background-color: #3182ce;
+    /* Indító gomb zöldes tónus */
+    div.row-widget.stHorizontal > div:nth-child(1) button {
+        background-color: #2e7d32 !important;
+    }
+    div.row-widget.stHorizontal > div:nth-child(1) button:hover {
+        background-color: #388e3c !important;
+    }
+    /* Leállító gomb pirosas tónus */
+    div.row-widget.stHorizontal > div:nth-child(2) button {
+        background-color: #c62828 !important;
+    }
+    div.row-widget.stHorizontal > div:nth-child(2) button:hover {
+        background-color: #d32f2f !important;
     }
     .chat-box {
         background-color: #161b22;
@@ -68,13 +81,13 @@ if "is_running" not in st.session_state:
 
 st.markdown("---")
 
-# Vezérlő gombok egy fixen látszódó konténerben (Sticky)
+# Vezérlő gombok egy fixen látszódó konténerben, egymás mellett
 st.markdown('<div class="sticky-buttons">', unsafe_allow_html=True)
 col_start, col_stop = st.columns(2)
 with col_start:
-    start_btn = st.button("🟢 INDÍTÁS / DÉMARRER")
+    start_btn = st.button("🟢 INDÍTÁS")
 with col_stop:
-    stop_btn = st.button("🔴 LEÁLLÍTÁS / ARRÊTER")
+    stop_btn = st.button("🔴 LEÁLLÍTÁS")
 st.markdown('</div>', unsafe_allow_html=True)
 
 if start_btn:
@@ -85,17 +98,17 @@ if stop_btn:
     st.session_state.is_running = False
 
 # Felület a párbeszédhez
-st.markdown("### 📝 Beszélgetési Előzmények / Historique de la conversation")
+st.markdown("### 📝 Beszélgetési Előzmények / Historique")
 chat_placeholder = st.empty()
 
 # Fő ciklus a hallgatáshoz
 if st.session_state.is_running:
-    st.info("A tolmács aktív (Magyar ⇄ Francia). Beszéljen a mikrofonba... | Interprète actif. Parlez dans le micro...")
+    st.info("A tolmács aktív (Magyar ⇄ Francia). Beszéljen a mikrofonba... | Interprète actif. Parlez...")
     
     audio_value = st.audio_input("Beszéljen most / Parlez maintenant...")
 
     if audio_value is not None:
-        with st.spinner("Tolmácsolás folyamatban... / Traduction en cours..."):
+        with st.spinner("Tolmácsolás folyamatban... / Traduction..."):
             try:
                 model = genai.GenerativeModel("gemini-2.0-flash")
                 audio_bytes = audio_value.read()
@@ -146,4 +159,4 @@ if st.session_state.is_running:
     if st.session_state.is_running:
         st.rerun()
 else:
-    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra. | L'interprète est arrêté. Cliquez sur DÉMARRER.")
+    st.warning("A tolmácsolás le van állítva. Kattints az INDÍTÁS gombra. | L'interprète est arrêté.")
