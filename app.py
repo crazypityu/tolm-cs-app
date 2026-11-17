@@ -10,7 +10,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Egyedi CSS: Kétnyelvű, kesztyűbarát gombok
+# Egyedi CSS: Kétnyelvű, kesztyűbarát gombok és sötét módú elrendezés
 st.markdown("""
     <style>
     .main {
@@ -104,13 +104,13 @@ chat_placeholder = st.empty()
 if st.session_state.is_running:
     st.info("A tolmács aktív (Magyar ⇄ Francia). Kattints a rögzítéshez... | Interprète actif...")
     
-    # Itt a megbízhatóbb audio_recorder komponenst használjuk mobilos kompatibilitáshoz
+    # Megbízhatóbb audio_recorder komponens mobilos kompatibilitáshoz
     audio_bytes = audio_recorder(text="Kattints a hangfelvételhez / Cliquez pour enregistrer", recording_color="#e53935", neutral_color="#2b6cb0", icon_size="32px")
 
     if audio_bytes is not None and len(audio_bytes) > 0:
         with st.spinner("Tolmácsolás... / Traduction..."):
             try:
-                model = genai.GenerativeModel("gemini-2.0-flash")
+                model = genai.GenerativeModel("gemini-2.5-flash")
                 
                 prompt = (
                     "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
