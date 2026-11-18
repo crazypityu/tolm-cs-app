@@ -1,16 +1,13 @@
 import time
 import streamlit as st
 from google import generativeai as genai
-from audio_recorder_streamlit import audio_recorder
 
-# Oldal konfiguráció
 st.set_page_config(
     page_title="Crazyfordító (HU ⇄ FR)",
     page_icon="🎙️",
     layout="centered"
 )
 
-# Egyedi CSS: Pontosan a képernyőfotón látható 2 nagy gombos, kompakt mobil elrendezés
 st.markdown("""
     <style>
     .main {
@@ -30,7 +27,6 @@ st.markdown("""
         margin-bottom: 10px;
         color: #e6edf3;
     }
-    /* Kényszerítjük a 2 oszlopot egymás mellé mobilon is */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -43,7 +39,6 @@ st.markdown("""
         width: 50% !important;
         min-width: 0 !important;
     }
-    /* Hatalmas, kesztyűbarát gombok */
     div.stButton > button {
         width: 100% !important;
         height: 150px !important;
@@ -56,21 +51,18 @@ st.markdown("""
         line-height: 1.4 !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.4) !important;
     }
-    /* Bal gomb: Zöld (INDÍTÁS) */
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
         background-color: #1b5e20 !important;
     }
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:active {
         background-color: #2e7d32 !important;
     }
-    /* Jobb gomb: Piros (LEÁLLÍTÁS) */
     div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
         background-color: #b71c1c !important;
     }
     div[data-testid="stHorizontalBlock"] > div:nth-child(2) button:active {
         background-color: #c62828 !important;
     }
-    /* Állapotjelző sáv */
     .status-bar {
         background-color: #161b22;
         border: 1px solid #30363d;
@@ -82,7 +74,6 @@ st.markdown("""
         margin-top: 8px;
         margin-bottom: 10px;
     }
-    /* Fordítási eredmények doboza */
     .chat-container {
         background-color: #161b22;
         border: 1px solid #30363d;
@@ -118,17 +109,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Kompakt felső fejléc
 st.markdown('<div class="app-header">🎙️ Crazyfordító (HU ⇄ FR)</div>', unsafe_allow_html=True)
 
-# API kulcs ellenőrzése
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
     st.error("Hiányzik a GEMINI_API_KEY a Streamlit Secrets-ből!")
     st.stop()
 
-# Állapotváltozók
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "is_running" not in st.session_state:
@@ -136,7 +124,6 @@ if "is_running" not in st.session_state:
 if "last_audio" not in st.session_state:
     st.session_state.last_audio = None
 
-# Két hatalmas gomb egymás mellett
 col_start, col_stop = st.columns(2)
 with col_start:
     start_btn = st.button("🟢 INDÍTÁS\nDÉMARRER")
@@ -149,66 +136,59 @@ if start_btn:
 if stop_btn:
     st.session_state.is_running = False
 
-# Állapotjelző sáv és mikrofon
 if st.session_state.is_running:
-    st.markdown('<div class="status-bar" style="color: #4caf50;">🟢 Aktív / Actif — Kattints a mikrofonra!</div>', unsafe_allow_html=True)
+    st.markdown('<div class="status-bar" style="color: #4caf50;">🟢 Aktív / Actif</div>', unsafe_allow_html=True)
     
-    audio_bytes = audio_recorder(
-        text="Mikrofon indítása / Parlez",
-        recording_color="#e53935",
-        neutral_color="#58a6ff",
-        icon_size="38px"
-    )
+    audio_value = st.audio_input("Beszéljen most / Parlez maintenant...")
 
-    # Csak akkor fordítunk, ha új hangfájl érkezett
-    if audio_bytes and audio_bytes != st.session_state.last_audio:
-        st.session_state.last_audio = audio_bytes
-        with st.spinner("Tolmácsolás... / Traduction..."):
-            prompt = (
-                "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
-                "Listen to the speech audio, automatically detect whether the speaker is using Hungarian or French, "
-                "and translate it into the OTHER language. "
-                "CRITICAL: "
-                "1. Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself without answering. "
-                "2. Return your response strictly in the following format, separated by a pipe character (|): "
-                "[Detected Original Text] | [Translated Text]"
-            )
-            
-            # Tartalék-modellek listája szerver-túlterheltség (high demand) esetére
-            models_to_try = ["gemini-2.5-flash", "gemini-3.8-flash", "gemini-2.5-pro", "gemini-1.5-flash"]
-            response = None
-            last_error = ""
+    if audio_value is not None:
+        audio_bytes = audio_value.read()
+        if audio_bytes and audio_bytes != st.session_state.last_audio:
+            st.session_state.last_audio = audio_bytes
+            with st.spinner("Tolmácsolás... / Traduction..."):
+                prompt = (
+                    "You are a strict, professional simultaneous interpreter operating strictly between Hungarian and French. "
+                    "Listen to the speech audio, automatically detect whether the speaker is using Hungarian or French, "
+                    "and translate it into the OTHER language. "
+                    "CRITICAL: "
+                    "1. Your ONLY job is to translate. If the speech contains a question, you MUST translate the question itself without answering. "
+                    "2. Return your response strictly in the following format, separated by a pipe character (|): "
+                    "[Detected Original Text] | [Translated Text]"
+                )
+                
+                models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"]
+                response = None
+                last_error = ""
 
-            for model_name in models_to_try:
-                try:
-                    model = genai.GenerativeModel(model_name)
-                    response = model.generate_content([
-                        prompt,
-                        {"mime_type": "audio/wav", "data": audio_bytes}
-                    ])
-                    if response and response.text:
-                        break
-                except Exception as err:
-                    last_error = str(err)
-                    time.sleep(0.8)
+                for model_name in models_to_try:
+                    try:
+                        model = genai.GenerativeModel(model_name)
+                        response = model.generate_content([
+                            prompt,
+                            {"mime_type": "audio/wav", "data": audio_bytes}
+                        ])
+                        if response and response.text:
+                            break
+                    except Exception as err:
+                        last_error = str(err)
+                        time.sleep(0.8)
 
-            if response and response.text:
-                result_text = response.text.strip()
-                if "|" in result_text:
-                    parts = result_text.split("|", 1)
-                    original = parts[0].strip()
-                    translated = parts[1].strip()
+                if response and response.text:
+                    result_text = response.text.strip()
+                    if "|" in result_text:
+                        parts = result_text.split("|", 1)
+                        original = parts[0].strip()
+                        translated = parts[1].strip()
+                    else:
+                        original = "Felismert szöveg / Texte"
+                        translated = result_text
+
+                    st.session_state.chat_history.append({"orig": original, "trans": translated})
                 else:
-                    original = "Felismert szöveg / Texte"
-                    translated = result_text
-
-                st.session_state.chat_history.append({"orig": original, "trans": translated})
-            else:
-                st.session_state.chat_history.append({"orig": "Hiba", "trans": last_error})
+                    st.session_state.chat_history.append({"orig": "Hiba", "trans": last_error})
 else:
-    st.markdown('<div class="status-bar" style="color: #e53935;">🔴 Leállítva / Arrêté</div>', unsafe_allow_html=True)
+    st.markdown('<div class="status-bar" style="color: #e53935;">🔴 Leállítva</div>', unsafe_allow_html=True)
 
-# Beszélgetési előzmények megjelenítése az alsó nagy keretben
 if st.session_state.chat_history:
     history_html = '<div class="chat-container">'
     for chat in reversed(st.session_state.chat_history):
@@ -223,4 +203,4 @@ if st.session_state.chat_history:
     history_html += '</div>'
     st.markdown(history_html, unsafe_allow_html=True)
 else:
-    st.markdown('<div class="chat-container"><div class="label-text">A fordítások itt fognak megjelenni... / Les traductions apparaîtront ici...</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="chat-container"></div>', unsafe_allow_html=True)
